@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Josh · Running Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f0f0f;--surface:#1a1a1a;--surface2:#222;--surface3:#2a2a2a;
+  --border:rgba(255,255,255,0.08);--text:#f0f0f0;
+  --muted:#888;--muted2:#444;
+  --green:#00e5a0;--blue:#4d9fff;--amber:#f5a623;--red:#ff5c5c;--purple:#c084fc;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.6;min-height:100vh}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:1.25rem 1.5rem}
+.hdr h1{font-size:1.5rem;font-weight:700;letter-spacing:-0.02em;margin-bottom:2px}
+.hdr h1 span{color:var(--green)}
+.hdr p{color:var(--muted);font-size:12px}
+.hdr-stats{display:flex;gap:1.5rem;margin-top:1rem;flex-wrap:wrap}
+.hdr-stat .v{font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+.hdr-stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+button.tab{flex-shrink:0;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;padding:.75rem 1.1rem;font-family:inherit;transition:color .15s}
+button.tab.on{color:var(--green);border-bottom-color:var(--green)}
+button.tab:hover{color:var(--text)}
+.pg{display:none;padding:1.25rem 1.5rem;max-width:1300px}
+.pg.on{display:block}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1.25rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem}
+.card .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
+.card .val{font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.1}
+.card .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.card.hi .val{color:var(--green)}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:.75rem}
+.cc h3{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.75rem;font-weight:600}
+.ch{position:relative;width:100%}
+.sec{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);margin:1.25rem 0 .75rem;font-weight:600}
+.leg{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem}
+.leg span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.leg i{width:10px;height:10px;border-radius:2px;display:inline-block;flex-shrink:0}
+.alert{border-radius:8px;padding:.9rem 1rem;margin-bottom:.75rem;font-size:13px;line-height:1.7}
+.ag{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.2);color:var(--muted)}
+.ag strong{color:var(--green)}
+.aa{background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.2);color:var(--muted)}
+.aa strong{color:var(--amber)}
+.ar{background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.2);color:var(--muted)}
+.ar strong{color:var(--red)}
+.ab{background:rgba(77,159,255,.07);border:1px solid rgba(77,159,255,.2);color:var(--muted)}
+.ab strong{color:var(--blue)}
+.pb-bar{margin-bottom:.6rem}
+.pb-bar .row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px}
+.pb-bar .row span:last-child{color:var(--text);font-weight:600}
+.pb-bar .track{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.pb-bar .fill{height:100%;border-radius:2px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);font-weight:600}
+.tbl td{padding:10px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .m{font-variant-numeric:tabular-nums;font-weight:600}
+.tbl .s{color:var(--muted)}
+.star{color:var(--green)}
+.tl{position:relative;padding-left:1.75rem}
+.tl::before{content:'';position:absolute;left:6px;top:8px;bottom:8px;width:1px;background:var(--border)}
+.tli{position:relative;margin-bottom:1.25rem}
+.tld{position:absolute;left:-1.65rem;top:4px;width:10px;height:10px;border-radius:50%;background:var(--muted2);border:2px solid var(--bg)}
+.tld.g{background:var(--green)}.tld.b{background:var(--blue)}.tld.a{background:var(--amber)}.tld.r{background:var(--red)}
+.tlt{font-size:10px;color:var(--muted);margin-bottom:1px}
+.tlh{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.tlb{font-size:12px;color:var(--muted)}
+.phase{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:.75rem}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.75rem;flex-wrap:wrap;gap:4px}
+.pt{font-size:14px;font-weight:700}
+.pd{font-size:11px;color:var(--muted)}
+.badge{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border-radius:4px;margin-bottom:6px}
+.bg{background:rgba(0,229,160,.12);color:var(--green)}
+.bb{background:rgba(77,159,255,.12);color:var(--blue)}
+.ba{background:rgba(245,166,35,.12);color:var(--amber)}
+.pm{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;background:var(--surface2);border-radius:8px;padding:.75rem;margin-bottom:.75rem}
+.pmi .l{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px}
+.pmi .v{font-size:13px;font-weight:700}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
+.pill{font-size:10px;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:var(--surface2)}
+.pill.r{color:var(--green);border-color:rgba(0,229,160,.25);background:rgba(0,229,160,.05)}
+.pill.b{color:var(--blue);border-color:rgba(77,159,255,.25);background:rgba(77,159,255,.05)}
+.pill.q{color:var(--amber);border-color:rgba(245,166,35,.25);background:rgba(245,166,35,.05)}
+.pill.lg{color:var(--purple);border-color:rgba(192,132,252,.25);background:rgba(192,132,252,.05)}
+.pn{font-size:12px;color:var(--muted);line-height:1.75}
+.pn strong{color:var(--text);font-weight:600}
+
+/* PRIORITY LIST */
+.priority-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:.75rem;display:flex;gap:1rem;align-items:flex-start}
+.priority-num{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;min-width:2.5rem;line-height:1}
+.priority-body{}
+.priority-title{font-size:14px;font-weight:600;margin-bottom:4px}
+.priority-desc{font-size:12px;color:var(--muted);line-height:1.7}
+.priority-meta{font-size:11px;margin-top:6px;font-weight:600}
+.impact-high{color:var(--red)}
+.impact-med{color:var(--amber)}
+.impact-low{color:var(--green)}
+
+/* FORM METRICS GRID */
+.form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
+.form-card .fval{font-size:1.5rem;font-weight:700;font-variant-numeric:tabular-nums;margin:4px 0}
+.form-card .flbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.form-card .fsub{font-size:11px;color:var(--muted);margin-top:2px}
+.form-card .fbenchmark{font-size:10px;margin-top:4px;padding:2px 6px;border-radius:4px;display:inline-block}
+.ok{background:rgba(0,229,160,.1);color:var(--green)}
+.warn{background:rgba(245,166,35,.1);color:var(--amber)}
+.bad{background:rgba(255,92,92,.1);color:var(--red)}
+
+@media(max-width:640px){
+  .g4{grid-template-columns:1fr 1fr;gap:.6rem}
+  .g3{grid-template-columns:1fr}
+  .g2{grid-template-columns:1fr}
+  .pm{grid-template-columns:1fr 1fr}
+  .form-grid{grid-template-columns:1fr 1fr}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .priority-item{flex-direction:column;gap:.5rem}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>Josh · <span>Running</span></h1>
+  <p>Apr 2023 – Apr 2026 &nbsp;·&nbsp; Age 31 &nbsp;·&nbsp; Post-ablation (12 Mar 2026)</p>
+  <div class="hdr-stats">
+    <div class="hdr-stat"><div class="v">6,844 km</div><div class="l">Total logged</div></div>
+    <div class="hdr-stat"><div class="v">629</div><div class="l">Runs</div></div>
+    <div class="hdr-stat"><div class="v">3:17:14</div><div class="l">Marathon PB</div></div>
+    <div class="hdr-stat"><div class="v">1:29:54</div><div class="l">Half PB</div></div>
+    <div class="hdr-stat"><div class="v">31</div><div class="l">Age · peak years</div></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" data-page="overview">Overview</button>
+  <button class="tab" data-page="heartrate">Heart Rate</button>
+  <button class="tab" data-page="form">Running Form</button>
+  <button class="tab" data-page="recovery">Recovery</button>
+  <button class="tab" data-page="limiters">Limiters</button>
+  <button class="tab" data-page="plan">6-Month Plan</button>
+</div>
+
+<!-- OVERVIEW -->
+<div class="pg on" id="pg-overview">
+  <div class="g4" style="margin-top:1rem">
+    <div class="card hi"><div class="lbl">Marathon PB</div><div class="val">3:17:14</div><div class="sub">27 Apr 2025 · 4:39/km</div></div>
+    <div class="card"><div class="lbl">Half marathon PB</div><div class="val">1:29:54</div><div class="sub">15 Sep 2024 · 4:14/km</div></div>
+    <div class="card"><div class="lbl">Best ~10km pace</div><div class="val">3:55/km</div><div class="sub">8 Nov 2024 · 7.66km</div></div>
+    <div class="card"><div class="lbl">Peak year</div><div class="val">2,221km</div><div class="sub">2025 · 209 runs</div></div>
+  </div>
+  <div class="g4">
+    <div class="card"><div class="lbl">2023</div><div class="val" style="font-size:1.2rem">1,844 km</div><div class="sub">160 runs · 5:42/km avg</div><div class="pb-bar" style="margin-top:.6rem"><div class="track"><div class="fill" style="width:83%;background:var(--blue)"></div></div></div></div>
+    <div class="card"><div class="lbl">2024</div><div class="val" style="font-size:1.2rem">2,140 km</div><div class="sub">200 runs · 5:26/km avg</div><div class="pb-bar" style="margin-top:.6rem"><div class="track"><div class="fill" style="width:96%;background:var(--blue)"></div></div></div></div>
+    <div class="card"><div class="lbl">2025</div><div class="val" style="font-size:1.2rem;color:var(--green)">2,221 km</div><div class="sub">209 runs · 5:15/km avg</div><div class="pb-bar" style="margin-top:.6rem"><div class="track"><div class="fill" style="width:100%"></div></div></div></div>
+    <div class="card"><div class="lbl">2026 (to Apr)</div><div class="val" style="font-size:1.2rem;color:var(--amber)">639 km</div><div class="sub">60 runs · post-ablation</div><div class="pb-bar" style="margin-top:.6rem"><div class="track"><div class="fill" style="width:29%;background:var(--amber)"></div></div></div></div>
+  </div>
+  <div class="cc">
+    <h3>Monthly running volume (km)</h3>
+    <div class="leg">
+      <span><i style="background:var(--blue)"></i>2023–2025</span>
+      <span><i style="background:var(--green)"></i>Jan–Feb 2026</span>
+      <span><i style="background:var(--red)"></i>AFib / ablation</span>
+      <span><i style="background:var(--amber)"></i>Post-ablation</span>
+    </div>
+    <div class="ch" style="height:200px"><canvas id="c-vol"></canvas></div>
+  </div>
+  <div class="cc">
+    <h3>Average pace trend (monthly — faster = lower line)</h3>
+    <div class="ch" style="height:160px"><canvas id="c-pace"></canvas></div>
+  </div>
+  <div class="g3">
+    <div class="card"><div class="lbl">Consistent improvement</div><div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Average pace improved 27 sec/km from 2023 to 2025. Easy days got faster too — not just races.</div></div>
+    <div class="card"><div class="lbl">AFib started before Feb</div><div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Max HR spikes of 192–221 bpm across 5 January 2026 runs — weeks before formal diagnosis.</div></div>
+    <div class="card"><div class="lbl">Training zones improving</div><div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Z4 threshold work rose from 8% in 2023 to 14% in 2025 — showing structured quality development.</div></div>
+  </div>
+</div>
+
+<!-- HEART RATE -->
+<div class="pg" id="pg-heartrate">
+  <div class="g4" style="margin-top:1rem">
+    <div class="card"><div class="lbl">Avg HR all runs</div><div class="val">141.8</div><div class="sub">bpm across 629 runs</div></div>
+    <div class="card"><div class="lbl">Highest recorded</div><div class="val" style="color:var(--red)">221 bpm</div><div class="sub">Jan 2026 — AFib episode</div></div>
+    <div class="card"><div class="lbl">Post-ablation avg</div><div class="val" style="color:var(--green)">139.7</div><div class="sub">bpm · settling well</div></div>
+    <div class="card"><div class="lbl">Lowest easy run</div><div class="val">110 bpm</div><div class="sub">Mar 24 · first post-ablation</div></div>
+  </div>
+
+  <div class="cc">
+    <h3>Monthly average heart rate (bpm) — full history</h3>
+    <div class="leg">
+      <span><i style="background:var(--blue)"></i>Pre-AFib</span>
+      <span><i style="background:var(--red)"></i>AFib / ablation</span>
+      <span><i style="background:var(--amber)"></i>Post-ablation</span>
+    </div>
+    <div class="ch" style="height:220px"><canvas id="c-hr-trend"></canvas></div>
+  </div>
+
+  <div class="g2">
+    <div class="cc">
+      <h3>HR zone distribution by year (% of runs)</h3>
+      <div class="leg">
+        <span><i style="background:#334155"></i>Z1 Recovery</span>
+        <span><i style="background:var(--blue)"></i>Z2 Aerobic</span>
+        <span><i style="background:var(--green)"></i>Z3 Tempo</span>
+        <span><i style="background:var(--amber)"></i>Z4 Threshold</span>
+      </div>
+      <div class="ch" style="height:200px"><canvas id="c-hr-zones"></canvas></div>
+    </div>
+    <div class="cc">
+      <h3>Post-ablation HR per run vs pre-AFib baseline (142 bpm)</h3>
+      <div class="ch" style="height:200px"><canvas id="c-hr-post"></canvas></div>
+    </div>
+  </div>
+
+  <div class="alert ab">
+    <strong>Key HR insight — Cardiac drift:</strong> Your average HR across the 3 years is remarkably stable at 141–144 bpm, which means your aerobic efficiency has genuinely improved — you're running faster at the same heart rate. A 27 sec/km pace improvement at equivalent HR is a real physiological gain, not just fitness maintenance.
+  </div>
+  <div class="alert ar">
+    <strong>The January 2026 warning signs:</strong> Five runs showed max HR of 192, 201, 210, 213, and 221 bpm. These are AFib episodes recorded in real time. Your watch knew before your cardiologist did.
+  </div>
+  <div class="alert ag">
+    <strong>Post-ablation HR:</strong> Settling back toward baseline. March average (133 bpm) was artificially low due to very cautious early runs. April is back to 141 bpm — essentially normal. No abnormal spikes recorded since ablation. Good sign.
+  </div>
+</div>
+
+<!-- RUNNING FORM -->
+<div class="pg" id="pg-form">
+  <div class="sec" style="margin-top:1rem">Current running form metrics (post-ablation avg)</div>
+  <div class="form-grid">
+    <div class="form-card">
+      <div class="flbl">Ground Contact Time</div>
+      <div class="fval" style="color:var(--green)">265 ms</div>
+      <div class="fsub">post-ablation avg</div>
+      <div class="fbenchmark ok">✓ Elite range &lt;250ms · Good</div>
+    </div>
+    <div class="form-card">
+      <div class="flbl">Vertical Oscillation</div>
+      <div class="fval" style="color:var(--amber)">8.4 cm</div>
+      <div class="fsub">post-ablation avg</div>
+      <div class="fbenchmark warn">⚠ Optimal &lt;8.0cm · Slightly high</div>
+    </div>
+    <div class="form-card">
+      <div class="flbl">Stride Length</div>
+      <div class="fval" style="color:var(--blue)">1.04 m</div>
+      <div class="fsub">post-ablation avg</div>
+      <div class="fbenchmark ok">↑ Was 1.17m at peak — rebuilding</div>
+    </div>
+    <div class="form-card">
+      <div class="flbl">Vertical Ratio</div>
+      <div class="fval" style="color:var(--green)">8.1%</div>
+      <div class="fsub">post-ablation avg</div>
+      <div class="fbenchmark ok">✓ Optimal &lt;9% · Good</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="cc">
+      <h3>Ground contact time — monthly avg (ms) · lower = better</h3>
+      <div class="ch" style="height:200px"><canvas id="c-gct"></canvas></div>
+    </div>
+    <div class="cc">
+      <h3>Vertical oscillation — monthly avg (cm) · lower = better</h3>
+      <div class="ch" style="height:200px"><canvas id="c-vert"></canvas></div>
+    </div>
+  </div>
+
+  <div class="cc">
+    <h3>Stride length — monthly avg (m) · correlates with fitness & speed</h3>
+    <div class="leg">
+      <span><i style="background:var(--blue)"></i>Stride length</span>
+      <span><i style="background:var(--amber)"></i>Post-ablation</span>
+    </div>
+    <div class="ch" style="height:180px"><canvas id="c-stride"></canvas></div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="lbl">GCT trend</div>
+      <div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Improved from ~270ms in 2023 to ~250ms at peak 2024. Post-ablation is ~265ms — slightly elevated but rebounding. GCT drops as cadence and efficiency improve.</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Vertical oscillation</div>
+      <div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Crept up from 8.4cm in 2023 to 8.9cm mid-2025. Your bounce increased as you ran harder and further. Focus on lower, quieter running will bring this back toward 8.0cm.</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Stride length</div>
+      <div class="sub" style="font-size:12px;color:var(--text);margin-top:4px">Grew from 0.97m in 2023 to 1.40m at Sept 2024 half marathon PB. Currently 1.04m — rebuilding. Stride returns naturally as fitness and pace improve. Don't force it.</div>
+    </div>
+  </div>
+
+  <div class="alert ab">
+    <strong>No cadence data in your Garmin export.</strong> Cadence (steps per minute) is one of the most actionable running metrics — ideally 170–180 spm. If your watch tracks it, check your Garmin Connect app directly. A higher cadence typically reduces GCT and vertical oscillation automatically. Adding strides (6×20 sec fast at 180+ spm) once a week will improve this measurably.
+  </div>
+</div>
+
+<!-- RECOVERY -->
+<div class="pg" id="pg-recovery">
+  <div class="alert ag" style="margin-top:1rem">
+    <strong>Recovery trajectory: ahead of schedule.</strong> Six weeks post-ablation, running 14–15km at 5:16–5:19/km. Pre-AFib baseline for runs ≥8km was 5:18/km at avg HR 142. Essentially back to base fitness for moderate efforts.
+  </div>
+  <div class="g4">
+    <div class="card"><div class="lbl">Est. half marathon now</div><div class="val" style="font-size:1.3rem">1:42–1:47</div><div class="sub">6 weeks post-ablation</div></div>
+    <div class="card"><div class="lbl">Fitness lost</div><div class="val" style="font-size:1.3rem">~12–15%</div><div class="sub">vs Oct 25–Jan 26 form</div></div>
+    <div class="card"><div class="lbl">Pace deficit</div><div class="val" style="font-size:1.3rem">+21 sec/km</div><div class="sub">vs pre-AFib baseline ≥8km</div></div>
+    <div class="card hi"><div class="lbl">Last week volume</div><div class="val" style="font-size:1.3rem">44 km</div><div class="sub">Within 40–50km target</div></div>
+  </div>
+  <div class="cc">
+    <h3>Post-ablation pace — each run vs pre-AFib baseline (5:18/km)</h3>
+    <div class="leg">
+      <span><i style="background:var(--green)"></i>Actual pace</span>
+      <span><i style="background:var(--muted2)"></i>Baseline 5:18/km</span>
+    </div>
+    <div class="ch" style="height:200px"><canvas id="c-rpace"></canvas></div>
+  </div>
+  <div class="g2">
+    <div class="cc">
+      <h3>Post-ablation avg HR per run</h3>
+      <div class="ch" style="height:180px"><canvas id="c-rhr"></canvas></div>
+    </div>
+    <div class="cc">
+      <h3>Post-ablation GCT (ms) — form rebuilding</h3>
+      <div class="ch" style="height:180px"><canvas id="c-rgct"></canvas></div>
+    </div>
+  </div>
+  <div class="cc">
+    <h3>Projected half marathon time — recovery toward PB attempt</h3>
+    <div class="ch" style="height:180px"><canvas id="c-proj"></canvas></div>
+  </div>
+  <div class="alert aa"><strong>Weight note:</strong> At 88kg (up ~4kg), every kg costs ~2–3 sec/km at race pace. Returning to racing weight = 8–15 sec/km free improvement as training normalises.</div>
+  <div class="alert ar"><strong>The January data flag:</strong> Max HR spikes of 192–221 bpm across 5 January 2026 runs — before formal AFib diagnosis. That training model is behind you.</div>
+</div>
+
+<!-- LIMITERS / PRIORITY LIST -->
+<div class="pg" id="pg-limiters">
+  <div class="alert ab" style="margin-top:1rem">
+    <strong>What the data says.</strong> This is a ranked list of your biggest performance limiters based on your 3 years of Garmin data, your medical situation, and where the evidence shows the most available improvement. These are in priority order — fix #1 before chasing #5.
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--red)">1</div>
+    <div class="priority-body">
+      <div class="priority-title">Aerobic base — the engine isn't back yet</div>
+      <div class="priority-desc">Your pace at a given HR is still 15–20 sec/km off your pre-AFib baseline for longer efforts. The ablation, reduced training, and weight gain have all shrunk your aerobic engine. This is the root cause of everything else right now. Every other metric improves when this improves.</div>
+      <div class="priority-meta impact-high">Impact: Very High &nbsp;·&nbsp; Fix: Consistent 40–50km weeks at easy–moderate effort for 12+ weeks. Add cycling as aerobic top-up.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--red)">2</div>
+    <div class="priority-body">
+      <div class="priority-title">No lactate threshold work in your history</div>
+      <div class="priority-desc">Your HR zone data shows 67–79% of runs in Z3 (tempo), 8–14% in Z4, and virtually zero in Z5. You're doing a lot of moderate "grey zone" running and very little true threshold or VO2max work. This is the most impactful type of training for half marathon performance and it's been missing. Your HM PB was likely run on volume alone, not sharpness.</div>
+      <div class="priority-meta impact-high">Impact: Very High &nbsp;·&nbsp; Fix: Weekly interval session from July onwards. 6×1km at 4:30–4:45/km. Also one sweetspot ride on the bike builds VO2max without run impact.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--amber)">3</div>
+    <div class="priority-body">
+      <div class="priority-title">Body weight — 4kg above racing weight</div>
+      <div class="priority-desc">At 88kg vs your likely racing weight of 83–84kg, you're carrying an estimated 8–12 sec/km penalty at race pace. This is one of the most underappreciated performance factors. The good news: this returns naturally as training volume normalises. No aggressive dieting needed — it would compromise recovery.</div>
+      <div class="priority-meta impact-high">Impact: High &nbsp;·&nbsp; Fix: Let training do the work over 3–4 months. Prioritise protein, avoid processed snacks. Don't diet while rebuilding base.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--amber)">4</div>
+    <div class="priority-body">
+      <div class="priority-title">Running economy — vertical oscillation creeping up</div>
+      <div class="priority-desc">Your vertical oscillation rose from 8.4cm in 2023 to 8.9cm by mid-2025. Ideal is below 8.0cm. Every centimetre of unnecessary bounce is wasted energy — you're going up instead of forward. Your GCT is also elevated post-ablation (265ms vs 250ms at peak). These are linked: lower bounce usually means shorter ground contact.</div>
+      <div class="priority-meta impact-med">Impact: Medium &nbsp;·&nbsp; Fix: Add 6×20 sec strides once a week — fast, light, cadence-focused. Drills: high knees, A-skips. Think "quiet feet" on easy runs. Cadence target: 174–178 spm.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--amber)">5</div>
+    <div class="priority-body">
+      <div class="priority-title">Cycling base — very early stage</div>
+      <div class="priority-desc">Your indoor cycling NP of 80–98W is a beginner-level output. As your primary aerobic supplement, it needs to develop into a genuine training tool, not just cross-training. Currently it's not adding much aerobic stimulus. Within 3–4 months of consistent Zone 2 work, your NP should reach 130–150W at the same HR — and that's where it starts meaningfully contributing to your running engine.</div>
+      <div class="priority-meta impact-med">Impact: Medium (rising) &nbsp;·&nbsp; Fix: Two rides/week minimum. One pure Zone 2 (45–60 min, conversational HR). One sweetspot or short interval ride. Track NP monthly — it should rise 5–10W per month early on.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--green)">6</div>
+    <div class="priority-body">
+      <div class="priority-title">Strength and injury resilience — no data, likely a gap</div>
+      <div class="priority-desc">Your Garmin logs show no strength or gym sessions. At 629 runs and 6,844km with no recorded strength work, you've built impressive volume but likely have muscular imbalances that will become limiters as you push harder. Glutes, hip flexors, and single-leg stability are the usual weak points for high-volume runners. This becomes especially relevant when you add speedwork.</div>
+      <div class="priority-meta impact-med">Impact: Medium &nbsp;·&nbsp; Fix: 2×20 min per week. Single-leg squats, hip thrusts, calf raises, Copenhagen planks. Add before or after easy runs — no gym needed.</div>
+    </div>
+  </div>
+
+  <div class="priority-item">
+    <div class="priority-num" style="color:var(--green)">7</div>
+    <div class="priority-body">
+      <div class="priority-title">Race experience at shorter distances — unexplored territory</div>
+      <div class="priority-desc">You have no standalone 5km or 10km race data. These distances develop speed-endurance and neuromuscular sharpness that transfers directly to half marathon performance. You've been a high-volume marathoner without the race sharpness that shorter distances provide. Your 7.66km at 3:55/km suggests real speed — it just hasn't been channelled into race-specific efforts.</div>
+      <div class="priority-meta impact-low">Impact: Medium-Low &nbsp;·&nbsp; Fix: Race a 10km in September 2026. It's a fitness test, a PB by definition, and will reveal your current true aerobic ceiling better than any training run.</div>
+    </div>
+  </div>
+
+  <div class="cc" style="margin-top:1rem">
+    <h3>What the HR zones reveal — too much grey zone running</h3>
+    <div class="leg">
+      <span><i style="background:#334155"></i>Z1 Recovery</span>
+      <span><i style="background:var(--blue)"></i>Z2 Aerobic</span>
+      <span><i style="background:var(--green)"></i>Z3 Tempo/Grey</span>
+      <span><i style="background:var(--amber)"></i>Z4 Threshold</span>
+    </div>
+    <div class="ch" style="height:180px"><canvas id="c-zones2"></canvas></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:.75rem">The optimal distribution for HM training is roughly: 70–80% easy (Z1–Z2), 10–15% threshold (Z4), 5–10% VO2max (Z5). You're currently heavy in Z3 — the "junk miles" zone that's too hard to be recovery and too easy to build race sharpness. Polarising your training (easier easy days, harder hard days) is the single biggest structural change you can make.</p>
+  </div>
+</div>
+
+<!-- PLAN -->
+<div class="pg" id="pg-plan">
+  <div class="alert ag" style="margin-top:1rem"><strong>The goal:</strong> Half marathon PB attempt by spring 2027. Sub-1:29 is achievable. The 21km long run cap does not constrain HM prep. At 31, your best running is ahead of you.</div>
+
+  <div class="sec">Phase 1 · Consolidate (May–Jun 2026)</div>
+  <div class="phase">
+    <div class="ph"><div><span class="badge bb">Foundation</span><div class="pt">Rebuild the base. No heroics.</div></div><div class="pd">May 1 – Jun 30</div></div>
+    <div class="pm">
+      <div class="pmi"><div class="l">Run volume</div><div class="v">35–42 km/wk</div></div>
+      <div class="pmi"><div class="l">Long run</div><div class="v">14–18 km</div></div>
+      <div class="pmi"><div class="l">Cycling</div><div class="v">2 × 45 min</div></div>
+      <div class="pmi"><div class="l">Quality</div><div class="v">1 session/wk</div></div>
+    </div>
+    <div class="pills">
+      <div class="pill r">Mon · Easy 8km</div><div class="pill b">Tue · Bike Zone 2</div><div class="pill q">Wed · Tempo 8km</div><div class="pill r">Thu · Easy 6–8km</div><div class="pill b">Fri · Bike or rest</div><div class="pill lg">Sat · Long run</div><div class="pill">Sun · Rest</div>
+    </div>
+    <div class="pn"><strong>Tempo:</strong> 3–4km at ~5:00–5:10/km, HR 150–158. No intervals yet.<br><strong>Cycling:</strong> Zone 2, conversational, HR ~120–135. Aerobic base, not fitness testing.<br><strong>Strides:</strong> Add 6×20s strides after easy runs from week 3. Cadence focus.<br><strong>Success marker:</strong> 40km weeks feeling controlled. Easy runs at 5:20–5:30/km.</div>
+  </div>
+
+  <div class="sec">Phase 2 · Build quality (Jul–Aug 2026)</div>
+  <div class="phase">
+    <div class="ph"><div><span class="badge bg">Development</span><div class="pt">Introduce intervals. Polarise the training.</div></div><div class="pd">Jul 1 – Aug 31</div></div>
+    <div class="pm">
+      <div class="pmi"><div class="l">Run volume</div><div class="v">42–50 km/wk</div></div>
+      <div class="pmi"><div class="l">Long run</div><div class="v">18–21 km</div></div>
+      <div class="pmi"><div class="l">Cycling</div><div class="v">2 × 50 min</div></div>
+      <div class="pmi"><div class="l">Quality</div><div class="v">2 sessions/wk</div></div>
+    </div>
+    <div class="pills">
+      <div class="pill r">Mon · Easy 8km</div><div class="pill q">Tue · Intervals</div><div class="pill b">Wed · Bike Z2+</div><div class="pill r">Thu · Easy 8km</div><div class="pill q">Fri · Tempo 10km</div><div class="pill lg">Sat · Long 18–21km</div><div class="pill">Sun · Rest</div>
+    </div>
+    <div class="pn"><strong>Intervals:</strong> 6–8 × 1km at 4:30–4:45/km, 90s recovery. This is the missing Z4/Z5 work.<br><strong>Easy days truly easy:</strong> HR below 140. Not 145–150 — below 140. This is the polarisation shift.<br><strong>Cycling:</strong> One Zone 2 + one sweetspot ride (HR 155–165, 20–30 min effort). VO2max gains.<br><strong>Success marker:</strong> 1km intervals controlled at 4:35–4:40/km. Easy runs staying genuinely easy.</div>
+  </div>
+
+  <div class="sec">Phase 3 · Race prep (Sep–Oct 2026)</div>
+  <div class="phase">
+    <div class="ph"><div><span class="badge ba">Race block</span><div class="pt">Sharpen. Target race Oct/Nov 2026.</div></div><div class="pd">Sep 1 – Oct 31</div></div>
+    <div class="pm">
+      <div class="pmi"><div class="l">Run volume</div><div class="v">45–50 km/wk</div></div>
+      <div class="pmi"><div class="l">Long run</div><div class="v">18–21 km</div></div>
+      <div class="pmi"><div class="l">Cycling</div><div class="v">1–2 × 45 min</div></div>
+      <div class="pmi"><div class="l">Race pace</div><div class="v">Weekly</div></div>
+    </div>
+    <div class="pills">
+      <div class="pill r">Mon · Easy 8km</div><div class="pill q">Tue · Race pace intervals</div><div class="pill r">Wed · Easy 8km</div><div class="pill q">Thu · Tempo 8–10km</div><div class="pill b">Fri · Bike easy</div><div class="pill lg">Sat · Long w/ HM-pace km</div><div class="pill">Sun · Rest</div>
+    </div>
+    <div class="pn"><strong>Race pace work:</strong> 5 × 2km at 4:15–4:20/km (sub-1:30 target) or 4:25–4:30/km (conservative 1:34–1:38).<br><strong>10km race September:</strong> Run one in September as fitness test and automatic PB — no taper needed.<br><strong>Race 1 target:</strong> 1:34–1:38. Don't chase 1:30 first race back. Build the base for spring 2027.<br><strong>Taper:</strong> 2 weeks out — volume down 30%, keep 1 quality session, long run 14km.</div>
+  </div>
+
+  <div class="sec">Race targets</div>
+  <div class="g3">
+    <div class="card"><div class="lbl">10km · Sep 2026</div><div class="val" style="font-size:1.2rem">43–46 min</div><div class="sub">First standalone 10km = automatic PB. Great fitness marker.</div></div>
+    <div class="card"><div class="lbl">Half marathon · Oct/Nov 2026</div><div class="val" style="font-size:1.2rem">1:34–1:38</div><div class="sub">Realistic first race back. Foundation for sub-1:30.</div></div>
+    <div class="card hi"><div class="lbl">Half marathon · Spring 2027</div><div class="val" style="font-size:1.2rem">Sub-1:30</div><div class="sub">PB target. Achievable with full build at 31.</div></div>
+  </div>
+
+  <div class="sec">Non-negotiables</div>
+  <div class="g3">
+    <div class="card"><div class="lbl">Hard rule</div><div class="val" style="font-size:1rem;line-height:1.5">Max 21km per run</div><div class="sub">Doctor's instruction. The HM doesn't need more anyway.</div></div>
+    <div class="card"><div class="lbl">Hard rule</div><div class="val" style="font-size:1rem;line-height:1.5">HR spikes → stop</div><div class="sub">Max HR >185 mid-run and you feel it: stop, walk, log it, discuss at next cardio check.</div></div>
+    <div class="card"><div class="lbl">Target</div><div class="val" style="font-size:1rem;line-height:1.5">Return to ~83–84kg</div><div class="sub">4kg loss = 8–12 sec/km free. Let training volume do the work.</div></div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.tab').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var id = this.getAttribute('data-page');
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+    document.querySelectorAll('.pg').forEach(function(p){p.classList.remove('on');});
+    this.classList.add('on');
+    document.getElementById('pg-'+id).classList.add('on');
+  });
+});
+
+var gc='#666', gd='rgba(255,255,255,0.04)';
+var months=["Apr'23","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan'24","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan'25","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan'26","Feb","Mar","Apr"];
+
+// Volume
+var vols=[85,205,203,212,211,276,177,245,230,216,125,134,119,207,206,228,184,173,165,158,227,189,183,221,219,129,156,170,174,150,174,216,239,212,191,125,111];
+var volColors=vols.map(function(v,i){if(i>=33&&i<=34)return'#00e5a0';if(i===35)return'#ff5c5c';if(i===36)return'#f5a623';return'#4d9fff';});
+new Chart(document.getElementById('c-vol'),{type:'bar',data:{labels:months,datasets:[{data:vols,backgroundColor:volColors,borderRadius:2,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+'km'}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{display:false}},y:{ticks:{color:gc,font:{size:10}},grid:{color:gd}}}}});
+
+// Pace
+function fmtP(s){return Math.floor(s/60)+':'+(s%60<10?'0':'')+Math.round(s%60);}
+var paces=[393,362,336,334,359,350,319,325,337,360,414,310,321,298,314,318,288,377,310,312,307,303,298,300,301,315,313,312,338,320,321,318,338,311,329,355,337];
+new Chart(document.getElementById('c-pace'),{type:'line',data:{labels:months,datasets:[{data:paces,borderColor:'#00e5a0',backgroundColor:'rgba(0,229,160,0.05)',pointRadius:2,tension:0.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return fmtP(c.parsed.y)+'/km'}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{display:false}},y:{reverse:true,ticks:{color:gc,font:{size:10},callback:fmtP},grid:{color:gd}}}}});
+
+// HR trend
+var hrData=[145,142.4,143.1,140.5,142.6,143.4,144.8,137.5,138.9,136.6,141.6,144.1,142.1,145.5,142.2,141.3,145,142.1,141.8,139.6,141.6,143.4,144.2,147.9,144.8,139.1,145,142.5,136.9,141.8,140,143.3,139,143.4,140.4,133.4,141.7];
+var hrColors=hrData.map(function(v,i){if(i>=33&&i<=34)return'rgba(0,229,160,0.8)';if(i===35)return'rgba(255,92,92,0.8)';if(i===36)return'rgba(245,166,35,0.8)';return'rgba(77,159,255,0.8)';});
+new Chart(document.getElementById('c-hr-trend'),{type:'bar',data:{labels:months,datasets:[{data:hrData,backgroundColor:hrColors,borderRadius:2},{label:'Baseline 142',data:months.map(function(){return 142;}),type:'line',borderColor:'rgba(255,255,255,0.3)',borderDash:[4,4],pointRadius:0,borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' bpm'}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{display:false}},y:{min:125,max:155,ticks:{color:gc,font:{size:10},callback:function(v){return v+' bpm'}},grid:{color:gd}}}}});
+
+// HR zones
+new Chart(document.getElementById('c-hr-zones'),{type:'bar',data:{labels:['2023','2024','2025'],datasets:[{label:'Z1',data:[1,3,0],backgroundColor:'#334155'},{label:'Z2',data:[12,19,19],backgroundColor:'#4d9fff'},{label:'Z3',data:[79,68,67],backgroundColor:'#00e5a0'},{label:'Z4',data:[8,10,14],backgroundColor:'#f5a623'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:gc,font:{size:11}},grid:{display:false}},y:{stacked:true,max:100,ticks:{color:gc,font:{size:10},callback:function(v){return v+'%'}},grid:{color:gd}}}}});
+
+// Post-ablation HR
+var rdates=['Mar 24','Mar 25','Mar 26','Mar 27','Mar 29','Mar 30','Mar 31','Apr 1','Apr 5','Apr 6','Apr 7','Apr 10','Apr 12','Apr 14','Apr 16','Apr 17','Apr 19','Apr 21','Apr 23'];
+var rhrs=[110,135,132,135,136,139,136,139,133,145,146,140,145,149,144,137,144,138,140];
+var rpaces=[478,351,339,404,379,381,345,376,374,368,328,359,319,305,319,331,316,320,329];
+new Chart(document.getElementById('c-hr-post'),{type:'line',data:{labels:rdates,datasets:[{label:'Avg HR',data:rhrs,borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,0.06)',pointRadius:4,pointBackgroundColor:'#f5a623',tension:0.3,fill:true},{label:'Baseline 142',data:rdates.map(function(){return 142;}),borderColor:'#555',borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.datasetIndex===0?c.parsed.y+' bpm':'Baseline 142 bpm';}}}},scales:{x:{ticks:{color:gc,font:{size:10},maxRotation:45},grid:{display:false}},y:{min:100,max:160,ticks:{color:gc,font:{size:10},callback:function(v){return v+' bpm'}},grid:{color:gd}}}}});
+
+// GCT
+var gctMonths=["Jun'23","Jul","Aug","Sep","Oct","Nov","Dec","Jan'24","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan'25","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec","Jan'26","Feb","Mar","Apr"];
+var gctData=[264,263,266,263,257,259,261,266,255,251,256,247,253,259,244,249,247,244,254,255,255,255,255,264,260,259,268,264,260,257,260,254,258,275,262];
+var gctColors=gctData.map(function(v,i){if(i>=33)return'#f5a623';return'#4d9fff';});
+new Chart(document.getElementById('c-gct'),{type:'line',data:{labels:gctMonths,datasets:[{data:gctData,borderColor:'#4d9fff',backgroundColor:'rgba(77,159,255,0.05)',pointRadius:3,tension:0.3,fill:true,segment:{borderColor:function(ctx){return ctx.p1DataIndex>=33?'#f5a623':'#4d9fff';}}},{label:'Optimal 250ms',data:gctMonths.map(function(){return 250;}),borderColor:'rgba(0,229,160,0.4)',borderDash:[4,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' ms';}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:14},grid:{display:false}},y:{reverse:false,min:235,max:285,ticks:{color:gc,font:{size:10},callback:function(v){return v+' ms'}},grid:{color:gd}}}}});
+
+// Vertical oscillation
+var vertData=[null,null,8.44,8.57,8.38,8.36,8.54,8.59,8.57,8.34,8.46,8.48,8.44,8.59,8.49,8.41,8.6,8.76,8.43,8.44,8.83,8.89,9.04,9.01,8.93,9.15,8.89,8.86,8.92,8.94,8.74,8.61,8.45,8.54,8.41,8.51,8.38];
+new Chart(document.getElementById('c-vert'),{type:'line',data:{labels:months,datasets:[{data:vertData,borderColor:'#c084fc',backgroundColor:'rgba(192,132,252,0.05)',pointRadius:2,tension:0.3,fill:true,spanGaps:true},{label:'Optimal 8.0cm',data:months.map(function(){return 8.0;}),borderColor:'rgba(0,229,160,0.4)',borderDash:[4,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' cm';}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{display:false}},y:{min:7.5,max:9.5,ticks:{color:gc,font:{size:10},callback:function(v){return v+' cm'}},grid:{color:gd}}}}});
+
+// Stride
+var strideData=[0.97,0.98,1.04,1.06,1.03,1.03,1.08,1.08,1.08,1.04,1.22,1.12,1.07,1.16,1.11,1.12,1.17,1.4,1.14,1.15,1.16,1.16,1.17,1.17,1.17,1.15,1.13,1.14,1.12,1.12,1.1,1.1,1.07,1.1,1.06,1.02,1.03];
+var strideColors=strideData.map(function(v,i){return i>=33?'rgba(245,166,35,0.8)':'rgba(0,229,160,0.8)';});
+new Chart(document.getElementById('c-stride'),{type:'bar',data:{labels:months,datasets:[{data:strideData,backgroundColor:strideColors,borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y+' m';}}}},scales:{x:{ticks:{color:gc,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:18},grid:{display:false}},y:{min:0.8,max:1.5,ticks:{color:gc,font:{size:10},callback:function(v){return v+' m'}},grid:{color:gd}}}}});
+
+// Recovery pace
+new Chart(document.getElementById('c-rpace'),{type:'line',data:{labels:rdates,datasets:[{label:'Pace',data:rpaces,borderColor:'#00e5a0',backgroundColor:'rgba(0,229,160,0.06)',pointRadius:4,pointBackgroundColor:'#00e5a0',tension:0.3,fill:true},{label:'Baseline',data:rdates.map(function(){return 318;}),borderColor:'#555',borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.datasetIndex===0?fmtP(c.parsed.y)+'/km':'Baseline 5:18/km';}}}},scales:{x:{ticks:{color:gc,font:{size:10},maxRotation:45},grid:{display:false}},y:{reverse:true,min:280,max:500,ticks:{color:gc,font:{size:10},callback:fmtP},grid:{color:gd}}}}});
+
+// Recovery HR
+new Chart(document.getElementById('c-rhr'),{type:'line',data:{labels:rdates,datasets:[{data:rhrs,borderColor:'#f5a623',backgroundColor:'rgba(245,166,35,0.06)',pointRadius:4,pointBackgroundColor:'#f5a623',tension:0.3,fill:true},{label:'Baseline',data:rdates.map(function(){return 142;}),borderColor:'#555',borderDash:[5,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.datasetIndex===0?c.parsed.y+' bpm':'Baseline 142 bpm';}}}},scales:{x:{ticks:{color:gc,font:{size:10},maxRotation:45},grid:{display:false}},y:{min:100,max:160,ticks:{color:gc,font:{size:10}},grid:{color:gd}}}}});
+
+// Recovery GCT
+var rgct=[258,258,255,260,256,250,256,269,260,272,277,273,277,279,277,280,278,281,321];
+new Chart(document.getElementById('c-rgct'),{type:'line',data:{labels:rdates,datasets:[{data:rgct,borderColor:'#4d9fff',backgroundColor:'rgba(77,159,255,0.06)',pointRadius:4,pointBackgroundColor:'#4d9fff',tension:0.3,fill:true},{label:'Pre-AFib best',data:rdates.map(function(){return 250;}),borderColor:'rgba(0,229,160,0.4)',borderDash:[4,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.datasetIndex===0?c.parsed.y+' ms':'Pre-AFib best 250ms';}}}},scales:{x:{ticks:{color:gc,font:{size:10},maxRotation:45},grid:{display:false}},y:{min:240,max:330,ticks:{color:gc,font:{size:10},callback:function(v){return v+' ms'}},grid:{color:gd}}}}});
+
+// Projection
+function fmtMin(v){var h=Math.floor(v/60);var m=Math.floor(v%60);var s=Math.round((v%1)*60);return(h>0?h+'h':'')+m+'m'+(s>0?s+'s':'');}
+new Chart(document.getElementById('c-proj'),{type:'line',data:{labels:['Now (Apr 26)','Jul 26','Oct 26','Jan 27','Apr 27','Oct 27'],datasets:[{label:'Projected HM',data:[104,98,94,91,88.5,87],borderColor:'#00e5a0',backgroundColor:'rgba(0,229,160,0.06)',pointRadius:5,pointBackgroundColor:'#00e5a0',tension:0.4,fill:true},{label:'PB 1:29:54',data:[89.9,89.9,89.9,89.9,89.9,89.9],borderColor:'#4d9fff',borderDash:[6,4],pointRadius:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.datasetIndex===0?'Est: '+fmtMin(c.parsed.y):'PB: 1h29m54s';}}}},scales:{x:{ticks:{color:gc,font:{size:10}},grid:{display:false}},y:{reverse:true,min:82,max:115,ticks:{color:gc,font:{size:10},callback:fmtMin},grid:{color:gd}}}}});
+
+// Zones limiter chart
+new Chart(document.getElementById('c-zones2'),{type:'bar',data:{labels:['2023','2024','2025','Target'],datasets:[{label:'Z1',data:[1,3,0,15],backgroundColor:'#334155'},{label:'Z2',data:[12,19,19,65],backgroundColor:'#4d9fff'},{label:'Z3 Grey',data:[79,68,67,10],backgroundColor:'#00e5a0'},{label:'Z4',data:[8,10,14,10],backgroundColor:'#f5a623'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,ticks:{color:gc,font:{size:11}},grid:{display:false}},y:{stacked:true,max:100,ticks:{color:gc,font:{size:10},callback:function(v){return v+'%'}},grid:{color:gd}}}}});
+</script>
+</body>
+</html>
