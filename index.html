@@ -9,7 +9,8 @@
 <meta name="theme-color" content="#09090F">
 <title>HM 1:27</title>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
@@ -36,9 +37,9 @@ opacity:0;pointer-events:none;transform:translateX(10px);
 transition:opacity .2s ease,transform .2s ease;
 padding-bottom:calc(var(--nav) + 12px)}
 .tab.on{opacity:1;pointer-events:auto;transform:none}
-#nav{flex-shrink:0;height:var(--nav);background:rgba(9,9,15,.92);
+#nav{flex-shrink:0;background:rgba(9,9,15,.92);
 backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-border-top:0.5px solid var(--bdr);display:flex;align-items:flex-start}
+border-top:0.5px solid var(--bdr);display:flex;align-items:center;padding-bottom:var(--sfb)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
 height:58px;background:none;border:none;color:var(--t3);cursor:pointer;
 gap:2px;font-family:inherit;transition:color .15s}
@@ -233,6 +234,38 @@ background:var(--bg3);overflow:hidden;flex-shrink:0}
 opacity:0;will-change:transform;border-radius:var(--r2)}
 ::-webkit-scrollbar{display:none}
 *{scrollbar-width:none}
+
+/* FITNESS STATS */
+.fit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px}
+.fit-card{background:var(--bg1);border-radius:var(--r);padding:14px;
+  cursor:pointer;border:0.5px solid var(--bdr);transition:opacity .1s}
+.fit-card:active{opacity:.75}
+.fc-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:8px}
+.fc-row{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:6px}
+.fc-val{font-size:32px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-1.5px;line-height:1}
+.fc-unit{font-size:13px;color:var(--t2);padding-bottom:3px;margin-left:1px}
+.fc-trend{font-size:16px;padding-bottom:2px}
+.fc-delta{font-size:10px;margin-top:4px;font-family:monospace}
+.race-chips{display:flex;flex-direction:column;gap:8px;padding:0 16px 16px}
+.race-chip{background:var(--bg1);border-radius:var(--r);padding:14px 16px;
+  display:flex;align-items:center;gap:14px;border:0.5px solid var(--bdr)}
+.rc-accent{width:4px;border-radius:2px;align-self:stretch;flex-shrink:0}
+.rc-days{font-size:34px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-2px;line-height:1;min-width:58px}
+.rc-info{flex:1}
+.rc-name{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.rc-date{font-size:12px;color:var(--t2);margin-top:2px}
+.rc-bar-wrap{width:4px;align-self:stretch;background:var(--bg3);border-radius:2px;overflow:hidden}
+.readiness-block{margin:0 16px 16px;background:var(--bg1);border-radius:var(--r);
+  padding:16px;border:0.5px solid var(--bdr);display:flex;align-items:center;gap:16px}
+.rrring{flex-shrink:0}
+.rr-info{flex:1}
+.rr-score{font-size:30px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-1px;line-height:1}
+.rr-lbl{font-size:12px;margin-top:3px}
+.rr-factors{font-size:11px;color:var(--t3);margin-top:7px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -646,76 +679,168 @@ function renderStats(){
   const total=Math.round(sessions.reduce((a,s)=>a+s[8],0));
   const pct=Math.round(doneKm/total*100);
 
-  // Phase arc SVG
-  const svgSize=220,cx=110,cy=110,r=86,sw=16;
-  const phaseFor=w=>sessions.find(s=>s[2]===w)?.[3]||1;
-  const PC_C={1:'#FF5500',t:'#9D6FFF',2:'#3D90F5',3:'#FF3D6B'};
-  function polar(cx,cy,r,a){
-    const rad=(a-90)*Math.PI/180;
-    return {x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};
-  }
-  function arc(cx,cy,r,a1,a2){
-    const s=polar(cx,cy,r,a1),e=polar(cx,cy,r,a2);
-    const large=a2-a1>180?1:0;
-    return `M${s.x.toFixed(2)},${s.y.toFixed(2)} A${r},${r} 0 ${large} 1 ${e.x.toFixed(2)},${e.y.toFixed(2)}`;
-  }
-  let arcs='';
-  for(let w=1;w<=24;w++){
-    const a1=(w-1)/24*360;
-    const a2=w/24*360-2;
-    const col=PC_C[phaseFor(w)];
-    const opacity=w<=cw?1:0.15;
-    arcs+=`<path d="${arc(cx,cy,r,a1,a2)}" stroke="${col}" stroke-width="${sw}" fill="none" stroke-linecap="round" opacity="${opacity}"/>`;
-  }
-  const cur=polar(cx,cy,r,((cw-0.5)/24*360));
-  arcs+=`<circle cx="${cur.x.toFixed(2)}" cy="${cur.y.toFixed(2)}" r="6" fill="white" opacity=".9"/>`;
+  // ── FITNESS METRICS (editable, stored in localStorage) ──
+  const DEFAULT_FM = {
+    vo2:{label:'VO₂ Max',val:55.7,unit:'',history:[58.2,57.8,56.1,53.4,54.2,55.1,55.7],goodDir:'up',color:'#FF5500'},
+    rhr:{label:'Rest HR',val:40,unit:'bpm',history:[43,42,41,42,43,41,40],goodDir:'down',color:'#3D90F5'},
+    hrv:{label:'HRV',val:102,unit:'ms',history:[98,104,101,99,93,100,102],goodDir:'up',color:'#2ED39A'},
+    cad:{label:'Cadence',val:87,unit:'spm',history:[83,85,86,87,87,87,87],goodDir:'up',color:'#9D6FFF'}
+  };
+  const fm = JSON.parse(localStorage.getItem('fitness_metrics')||'null') || DEFAULT_FM;
 
-  const arcSVG=`<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="${sw}"/>
-    ${arcs}
-    <text x="${cx}" y="${cy-10}" text-anchor="middle" fill="var(--t1)" font-size="36" font-weight="800" font-family="'SF Mono',monospace" letter-spacing="-2">${cw}</text>
-    <text x="${cx}" y="${cy+14}" text-anchor="middle" fill="var(--t2)" font-size="13">of 24 weeks</text>
+  function sparkline(data,color,w,h){
+    w=w||56;h=h||22;
+    if(!data||data.length<2)return '';
+    const mn=Math.min(...data),mx=Math.max(...data),range=mx-mn||1;
+    const pts=data.map((v,i)=>`${(i/(data.length-1)*w).toFixed(1)},${(h-(v-mn)/range*(h*.75)-h*.1).toFixed(1)}`);
+    const lp=pts[pts.length-1].split(',');
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible;display:block">
+      <polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".65"/>
+      <circle cx="${lp[0]}" cy="${lp[1]}" r="2.5" fill="${color}"/>
+    </svg>`;
+  }
+
+  function trendIcon(hist,goodDir){
+    const diff=hist[hist.length-1]-hist[hist.length-2];
+    if(Math.abs(diff)<0.3)return {icon:'→',color:'#6B6F8F'};
+    const up=diff>0;
+    const good=(up&&goodDir==='up')||(!up&&goodDir==='down');
+    return {icon:up?'↑':'↓',color:good?'#2ED39A':'#FF3D6B'};
+  }
+
+  function editMetric(key){
+    const m=fm[key];
+    const v=prompt(`Update ${m.label}:`,m.val);
+    if(v===null)return;
+    const n=parseFloat(v);
+    if(isNaN(n))return;
+    fm[key]={...m,val:n,history:[...m.history.slice(1),n]};
+    localStorage.setItem('fitness_metrics',JSON.stringify(fm));
+    renderStats();
+  }
+  window._editMetric=editMetric;
+
+  const fitCards=Object.entries(fm).map(([key,m])=>{
+    const tr=trendIcon(m.history,m.goodDir);
+    const delta=(m.val-m.history[0]);
+    const sign=delta>0?'+':'';
+    return `<div class="fit-card" onclick="_editMetric('${key}')">
+      <div class="fc-lbl">${m.label}</div>
+      <div class="fc-row">
+        <div style="display:flex;align-items:flex-end;gap:2px">
+          <span class="fc-val" style="color:${m.color}">${m.val}</span>
+          <span class="fc-unit">${m.unit}</span>
+        </div>
+        <span class="fc-trend" style="color:${tr.color}">${tr.icon}</span>
+      </div>
+      <div class="fc-spark">${sparkline(m.history,m.color)}</div>
+      <div class="fc-delta" style="color:${tr.color}">${sign}${delta.toFixed(1)} since Jan</div>
+    </div>`;
+  }).join('');
+
+  // ── READINESS SCORE ──
+  const hrv=fm.hrv.val, rhr=fm.rhr.val, vo2=fm.vo2.val;
+  let score=70;
+  if(hrv>=100)score+=12;else if(hrv>=90)score+=6;else score-=6;
+  if(rhr<=41)score+=8;else if(rhr<=45)score+=3;else score-=4;
+  if(vo2>=55)score+=8;else if(vo2>=52)score+=4;
+  score=Math.min(99,Math.max(40,score));
+  const rLabel=score>=85?'High readiness':score>=70?'Good readiness':'Moderate readiness';
+  const rColor=score>=85?'#2ED39A':score>=70?'#FFC000':'#FF5500';
+  const rAngle=score/100*283;
+  const readinessRing=`<svg width="64" height="64" class="rrring">
+    <circle cx="32" cy="32" r="27" fill="none" stroke="var(--bg3)" stroke-width="5"/>
+    <circle cx="32" cy="32" r="27" fill="none" stroke="${rColor}" stroke-width="5"
+      stroke-dasharray="${rAngle} 283" stroke-dashoffset="70.75"
+      stroke-linecap="round" transform="rotate(-90 32 32)"/>
+    <text x="32" y="37" text-anchor="middle" fill="${rColor}" font-size="14" font-weight="800"
+      font-family="'SF Mono',monospace">${score}</text>
   </svg>`;
 
-  // Strava-based stats if available
-  const stravaPaceRows = stravaActs.length ? (() => {
-    const recent = stravaActs.slice(0,8).map(a=>{
+  const recentQual=sessions.filter(s=>s[4]==='q'&&new Date(s[1])<TODAY).slice(-3);
+  const factorStr=`HRV ${hrv}ms · RHR ${rhr}bpm · VO₂ ${vo2}`;
+
+  // ── PHASE ARC ──
+  const svgSize=220,pcx=110,pcy=110,pr=86,psw=16;
+  const phaseFor=w=>sessions.find(s=>s[2]===w)?.[3]||1;
+  const PC_C={1:'#FF5500',t:'#9D6FFF',2:'#3D90F5',3:'#FF3D6B'};
+  function polar(cx,cy,r,a){const rad=(a-90)*Math.PI/180;return{x:cx+r*Math.cos(rad),y:cy+r*Math.sin(rad)};}
+  function arcPath(cx,cy,r,a1,a2){const s=polar(cx,cy,r,a1),e=polar(cx,cy,r,a2);const lg=a2-a1>180?1:0;return `M${s.x.toFixed(2)},${s.y.toFixed(2)} A${r},${r} 0 ${lg} 1 ${e.x.toFixed(2)},${e.y.toFixed(2)}`;}
+  let arcs='';
+  for(let w=1;w<=24;w++){
+    const a1=(w-1)/24*360,a2=w/24*360-2,col=PC_C[phaseFor(w)],op=w<=cw?1:0.14;
+    arcs+=`<path d="${arcPath(pcx,pcy,pr,a1,a2)}" stroke="${col}" stroke-width="${psw}" fill="none" stroke-linecap="round" opacity="${op}"/>`;
+  }
+  const cur=polar(pcx,pcy,pr,(cw-0.5)/24*360);
+  arcs+=`<circle cx="${cur.x.toFixed(2)}" cy="${cur.y.toFixed(2)}" r="6" fill="white" opacity=".9"/>`;
+  const arcSVG=`<svg width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}">
+    <circle cx="${pcx}" cy="${pcy}" r="${pr}" fill="none" stroke="var(--bg3)" stroke-width="${psw}"/>
+    ${arcs}
+    <text x="${pcx}" y="${pcy-10}" text-anchor="middle" fill="var(--t1)" font-size="36" font-weight="800" font-family="'SF Mono',monospace" letter-spacing="-2">${cw}</text>
+    <text x="${pcx}" y="${pcy+14}" text-anchor="middle" fill="var(--t2)" font-size="13">of 24 weeks</text>
+  </svg>`;
+
+  // ── RACE COUNTDOWNS ──
+  function daysTo(d){return Math.max(0,Math.ceil((new Date(d)-TODAY)/864e5));}
+  const races=[
+    {name:'Tune-Up Half',date:'2026-09-06',target:'~1:30–1:32',color:'#9D6FFF'},
+    {name:'10km TT',date:'2026-10-18',target:'~40:00–40:30',color:'#3D90F5'},
+    {name:'Goal Half Marathon',date:'2026-11-22',target:'1:27:00',color:'#FF5500'}
+  ];
+  const raceChips=races.map(r=>{
+    const d=daysTo(r.date);
+    const dateStr=new Date(r.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    return `<div class="race-chip">
+      <div class="rc-accent" style="background:${r.color}"></div>
+      <div class="rc-days" style="color:${r.color}">${d}</div>
+      <div style="font-size:10px;color:var(--t3);padding-bottom:2px;align-self:flex-end">days</div>
+      <div class="rc-info">
+        <div class="rc-name">${r.name}</div>
+        <div class="rc-date">${dateStr} · ${r.target}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── STRAVA ROWS ──
+  const stravaRows=stravaActs.length?`
+    <div style="padding-bottom:8px"><div class="section-head" style="padding:0 20px">Recent Strava runs</div></div>
+    ${stravaActs.slice(0,6).map(a=>{
       const pace=fmtPace(a.distance/a.moving_time);
       const d=new Date(a.start_date_local).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
       return `<div class="up-card" style="margin:0 16px 6px">
         <div class="up-dot" style="background:var(--cl)"></div>
-        <div class="up-info">
-          <div class="up-name">${a.name}</div>
-          <div class="up-date">${d}</div>
-        </div>
+        <div class="up-info"><div class="up-name">${a.name}</div><div class="up-date">${d}</div></div>
         <div class="up-meta">${pace}/km · ${fmtDist(a.distance)}</div>
       </div>`;
-    }).join('');
-    return `<div style="padding-bottom:8px"><div class="section-head" style="padding:0 20px">Recent Strava runs</div></div>${recent}`;
-  })() : '';
+    }).join('')}`:'';
 
   document.getElementById('tab-stats').innerHTML=`
-    <div class="stat-arc">${arcSVG}</div>
-    <div class="stats-grid">
-      <div class="stat-box">
-        <div class="sb-lbl">Days to race</div>
-        <div class="sb-val" style="color:var(--orange)">${DAYS_TO_RACE}</div>
-        <div class="sb-sub">22 Nov 2026</div>
+    <div style="padding:16px 0 4px">
+      <div class="section-head" style="padding:0 20px 8px">Athlete Snapshot
+        <span style="font-weight:400;font-size:10px;color:var(--t3);margin-left:6px">tap to update</span>
       </div>
+      <div class="fit-grid">${fitCards}</div>
+    </div>
+    <div class="readiness-block">
+      ${readinessRing}
+      <div class="rr-info">
+        <div class="rr-score" style="color:${rColor}">${score}<span style="font-size:16px;color:var(--t2)">/100</span></div>
+        <div class="rr-lbl" style="color:${rColor}">${rLabel}</div>
+        <div class="rr-factors">${factorStr}</div>
+      </div>
+    </div>
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Training block</div></div>
+    <div style="display:flex;justify-content:center;padding:0 0 8px">${arcSVG}</div>
+    <div class="stats-grid" style="padding-top:0">
       <div class="stat-box">
         <div class="sb-lbl">Completed</div>
         <div class="sb-val">${pct}<span class="sb-unit">%</span></div>
-        <div class="sb-sub">${doneKm} of ${total} km</div>
+        <div class="sb-sub">${doneKm} of ${total}km</div>
       </div>
       <div class="stat-box">
-        <div class="sb-lbl">Total sessions</div>
-        <div class="sb-val">${sessions.length}</div>
-        <div class="sb-sub">${done.length} done</div>
-      </div>
-      <div class="stat-box">
-        <div class="sb-lbl">Weekly cap</div>
-        <div class="sb-val">50<span class="sb-unit">km</span></div>
-        <div class="sb-sub">Peak: 48km W6/W9</div>
+        <div class="sb-lbl">Sessions done</div>
+        <div class="sb-val">${done.length}</div>
+        <div class="sb-sub">of ${sessions.length} total</div>
       </div>
     </div>
     <div class="chart-section">
@@ -726,26 +851,23 @@ function renderStats(){
         <span class="leg"><span class="leg-dot" style="background:#3D90F5"></span>Phase 2</span>
         <span class="leg"><span class="leg-dot" style="background:#FF3D6B"></span>Phase 3</span>
       </div>
-      <div class="vol-cont"><canvas id="vc" role="img" aria-label="Weekly training volume bar chart">Volume</canvas></div>
+      <div class="vol-cont"><canvas id="vc" role="img" aria-label="Weekly volume">Volume</canvas></div>
     </div>
-    ${stravaPaceRows}
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Race countdowns</div></div>
+    <div class="race-chips">${raceChips}</div>
+    ${stravaRows}
     <div style="height:8px"></div>`;
 
   const phC={1:'#FF5500',t:'#9D6FFF',2:'#3D90F5',3:'#FF3D6B'};
   const wks=[];
-  for(let w=1;w<=24;w++){
-    const ss=sessions.filter(s=>s[2]===w);
-    wks.push({w,km:Math.round(ss.reduce((a,s)=>a+s[8],0)),ph:ss[0]?.[3]||1});
-  }
+  for(let w=1;w<=24;w++){const ss=sessions.filter(s=>s[2]===w);wks.push({w,km:Math.round(ss.reduce((a,s)=>a+s[8],0)),ph:ss[0]?.[3]||1});}
   if(volChart)volChart.destroy();
   volChart=new Chart(document.getElementById('vc'),{
     type:'bar',
-    data:{labels:wks.map(x=>`W${x.w}`),datasets:[{
-      data:wks.map(x=>x.km),
+    data:{labels:wks.map(x=>`W${x.w}`),datasets:[{data:wks.map(x=>x.km),
       backgroundColor:wks.map(x=>phC[x.ph]||'#888'),
       borderColor:wks.map(x=>x.w===cw?'#fff':'transparent'),
-      borderWidth:2,borderRadius:4,borderSkipped:false
-    }]},
+      borderWidth:2,borderRadius:4,borderSkipped:false}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y}km`},
         backgroundColor:'#1E1F2E',titleColor:'#F2EDE8',bodyColor:'#6B6F8F'}},
