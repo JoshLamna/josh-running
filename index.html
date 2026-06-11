@@ -39,9 +39,11 @@ padding-bottom:calc(var(--nav) + 12px)}
 .tab.on{opacity:1;pointer-events:auto;transform:none}
 #nav{flex-shrink:0;background:rgba(9,9,15,.92);
 backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
-border-top:0.5px solid var(--bdr);display:flex;align-items:center;padding-bottom:var(--sfb)}
+border-top:0.5px solid var(--bdr);display:flex;flex-direction:column}
+#nav-row{display:flex;height:56px}
+#nav-safe{height:var(--sfb);background:rgba(9,9,15,.92)}
 .nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-height:58px;background:none;border:none;color:var(--t3);cursor:pointer;
+height:56px;background:none;border:none;color:var(--t3);cursor:pointer;
 gap:2px;font-family:inherit;transition:color .15s}
 .nb i{font-size:22px;transition:color .15s}
 .nb span{font-size:10px;font-weight:600;letter-spacing:.02em}
@@ -266,6 +268,34 @@ opacity:0;will-change:transform;border-radius:var(--r2)}
   letter-spacing:-1px;line-height:1}
 .rr-lbl{font-size:12px;margin-top:3px}
 .rr-factors{font-size:11px;color:var(--t3);margin-top:7px;line-height:1.5}
+
+/* METRIC DRILL */
+.period-row{display:flex;gap:6px;margin-bottom:16px}
+.period-btn{flex:1;padding:7px 4px;background:var(--bg3);border:none;border-radius:8px;
+  color:var(--t2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;
+  transition:background .12s,color .12s}
+.period-btn.on{background:var(--orange);color:#fff}
+.drill-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.drill-stat{background:var(--bg3);border-radius:10px;padding:10px;text-align:center}
+.drill-stat-v{font-size:18px;font-weight:800;font-family:'SF Mono',monospace;letter-spacing:-.5px}
+.drill-stat-l{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.drill-chart-wrap{position:relative;height:180px;margin-bottom:4px}
+/* PREDICTOR */
+.pred-block{margin:0 16px 16px;background:var(--bg1);border-radius:var(--r);
+  border:0.5px solid var(--bdr)}
+.pred-tabs{display:flex;border-bottom:0.5px solid var(--bdr)}
+.pred-tab{flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid transparent;
+  margin-bottom:-0.5px;color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:color .12s,border-color .12s}
+.pred-tab.on{color:var(--t1);border-bottom-color:var(--orange)}
+.pred-main{padding:14px 16px 0}
+.pred-time{font-size:40px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-2px;line-height:1;color:var(--t1)}
+.pred-pace{font-size:14px;color:var(--t2);margin-top:3px;font-family:monospace}
+.pred-delta{display:inline-flex;align-items:center;gap:4px;font-size:12px;
+  font-family:monospace;padding:3px 8px;border-radius:6px;margin-top:6px}
+.pred-chart-wrap{position:relative;height:130px;padding:12px 16px 16px}
+.pred-note{font-size:10px;color:var(--t3);padding:0 16px 14px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -278,10 +308,13 @@ opacity:0;will-change:transform;border-radius:var(--r2)}
   <div id="tab-settings" class="tab"></div>
 </div>
 <nav id="nav">
+  <div id="nav-row">
   <button class="nb on" data-t="today"><i class="ti ti-home"></i><span>Today</span></button>
   <button class="nb" data-t="plan"><i class="ti ti-calendar"></i><span>Plan</span></button>
   <button class="nb" data-t="stats"><i class="ti ti-chart-bar"></i><span>Stats</span></button>
   <button class="nb" data-t="settings"><i class="ti ti-settings"></i><span>Settings</span></button>
+  </div>
+  <div id="nav-safe"></div>
 </nav>
 <div id="sheet-bg"></div>
 <div id="sheet"><div class="sh-handle"></div><div id="sheet-body"></div></div>
@@ -672,21 +705,186 @@ function changeWeek(d){
 }
 
 // ── STATS TAB ──
+
+// ── METRIC HISTORY (pre-populated from training data) ──
+const MW=['2026-01-05','2026-01-12','2026-01-19','2026-01-26',
+  '2026-02-02','2026-02-09','2026-02-16','2026-02-23',
+  '2026-03-02','2026-03-09','2026-03-16','2026-03-23',
+  '2026-03-30','2026-04-06','2026-04-13','2026-04-20',
+  '2026-04-27','2026-05-04','2026-05-11','2026-05-18',
+  '2026-05-25','2026-06-01','2026-06-08'];
+
+const MDATA={
+  vo2:{label:'VO₂ Max',unit:'',color:'#FF5500',source:'Garmin',goodDir:'up',
+    vals:[57.2,57.5,57.8,58.0,58.2,58.0,57.6,57.2,56.8,55.8,54.1,53.4,53.6,54.0,54.3,54.6,54.9,55.1,55.2,55.5,55.6,55.7,55.7]},
+  rhr:{label:'Resting HR',unit:'bpm',color:'#3D90F5',source:'Garmin',goodDir:'down',
+    vals:[43,43,42,42,43,42,42,41,42,43,44,44,43,43,42,41,41,41,41,40,40,40,40]},
+  hrv:{label:'HRV',unit:'ms',color:'#2ED39A',source:'Garmin',goodDir:'up',
+    vals:[98,101,104,103,100,101,102,100,99,98,94,92,95,97,99,100,101,93,100,102,101,102,102]},
+  cad:{label:'Cadence',unit:'spm',color:'#9D6FFF',source:'Strava',goodDir:'up',
+    vals:[86,87,87,87,86,87,87,87,87,88,76,78,79,82,84,85,86,86,87,87,87,87,87]}
+};
+
+function getMData(key){
+  // Override cadence and derive avg HR from Strava if connected
+  const base={...MDATA[key]};
+  if(stravaActs.length&&key==='cad'){
+    // Compute recent cadence from Strava activities
+    const recent=stravaActs.filter(a=>a.average_cadence>0).slice(0,8);
+    if(recent.length){
+      const avg=Math.round(recent.reduce((s,a)=>s+a.average_cadence*2,0)/recent.length);
+      base.vals=[...base.vals.slice(0,-1),avg];
+    }
+  }
+  return base;
+}
+
+function filterByPeriod(vals,period){
+  const n={'4W':4,'3M':13,'6M':26,'12M':52}[period]||13;
+  return vals.slice(-Math.min(n,vals.length));
+}
+
+function vo2ToRaceS(vo2,distM){
+  const t5k=1182-(vo2-55)*24; // Jack Daniels approx
+  return t5k*Math.pow(distM/5000,1.06);
+}
+
+function fmtRaceTime(s){
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.round(s%60);
+  if(h>0)return h+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  return m+':'+String(sec).padStart(2,'0');
+}
+
+let drillChart=null;
+let predChart=null;
+let drillKey=null;
+let predDist=21097;
+
+function openMetricDrill(key){
+  drillKey=key;
+  const m=getMData(key);
+  const period='3M';
+  document.getElementById('sheet-body').innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${m.label}</div>
+        <div style="font-size:36px;font-weight:800;font-family:'SF Mono',monospace;letter-spacing:-1.5px;color:${m.color}">${m.vals[m.vals.length-1]}<span style="font-size:16px;color:var(--t2);font-weight:400;margin-left:2px">${m.unit}</span></div>
+        <div style="font-size:11px;color:var(--t3);margin-top:3px">Source: ${m.source}</div>
+      </div>
+    </div>
+    <div class="period-row" id="drill-periods">
+      <button class="period-btn" data-p="4W" onclick="updateDrill('4W')">4W</button>
+      <button class="period-btn on" data-p="3M" onclick="updateDrill('3M')">3M</button>
+      <button class="period-btn" data-p="6M" onclick="updateDrill('6M')">6M</button>
+      <button class="period-btn" data-p="12M" onclick="updateDrill('12M')">12M</button>
+    </div>
+    <div class="drill-chart-wrap"><canvas id="drill-cv"></canvas></div>
+    <div class="drill-stats" id="drill-stat-row"></div>`;
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('sheet-bg').classList.add('vis');
+  renderDrillChart(key,period);
+}
+
+function updateDrill(period){
+  document.querySelectorAll('#drill-periods .period-btn').forEach(b=>{
+    b.classList.toggle('on',b.dataset.p===period);
+  });
+  renderDrillChart(drillKey,period);
+}
+window.updateDrill=updateDrill;
+window.openMetricDrill=openMetricDrill;
+
+function renderDrillChart(key,period){
+  if(drillChart){drillChart.destroy();drillChart=null;}
+  const m=getMData(key);
+  const filtered=filterByPeriod(m.vals,period);
+  const dates=MW.slice(-filtered.length);
+  const mn=Math.min(...filtered),mx=Math.max(...filtered);
+  const range=mx-mn||1;
+  const diff=filtered[filtered.length-1]-filtered[0];
+  const diffStr=(diff>=0?'+':'')+diff.toFixed(1)+' '+m.unit;
+  const diffCol=((m.goodDir==='up')===diff>=0)?'var(--ce)':(Math.abs(diff)<0.5?'var(--t2)':'var(--cr)');
+  const avg=(filtered.reduce((a,v)=>a+v,0)/filtered.length).toFixed(1);
+  const minV=mn.toFixed(1),maxV=mx.toFixed(1);
+  document.getElementById('drill-stat-row').innerHTML=`
+    <div class="drill-stat"><div class="drill-stat-v" style="color:${diffCol}">${diffStr}</div><div class="drill-stat-l">Change</div></div>
+    <div class="drill-stat"><div class="drill-stat-v">${minV}</div><div class="drill-stat-l">Min</div></div>
+    <div class="drill-stat"><div class="drill-stat-v">${maxV}</div><div class="drill-stat-l">Max</div></div>`;
+  const labels=dates.map(d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+  const ctx=document.getElementById('drill-cv');
+  if(!ctx)return;
+  drillChart=new Chart(ctx,{type:'line',
+    data:{labels,datasets:[{data:filtered,borderColor:m.color,backgroundColor:m.color+'18',
+      borderWidth:2,pointRadius:filtered.length<=8?4:2,pointBackgroundColor:m.color,
+      tension:0.35,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y} ${m.unit}`},
+        backgroundColor:'#1E1F2E',titleColor:'#F2EDE8',bodyColor:'#6B6F8F'}},
+      scales:{x:{grid:{display:false},ticks:{color:'#3E4258',font:{size:9},maxTicksLimit:6,maxRotation:0}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},
+          ticks:{color:'#3E4258',font:{size:10},callback:v=>v+(m.unit?m.unit:'')},
+          suggestedMin:mn-range*0.2,suggestedMax:mx+range*0.2}}}
+  });
+}
+
+function switchPredDist(distM,btn){
+  predDist=distM;
+  document.querySelectorAll('.pred-tab').forEach(b=>b.classList.toggle('on',b===btn));
+  renderPredChart();
+}
+window.switchPredDist=switchPredDist;
+
+function renderPredChart(){
+  if(predChart){predChart.destroy();predChart=null;}
+  const vo2Hist=MDATA.vo2.vals;
+  const labels=MW.map(d=>new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short'}));
+  const preds=vo2Hist.map(v=>vo2ToRaceS(v,predDist)/60); // in minutes
+  const cur=preds[preds.length-1];
+  const curStr=fmtRaceTime(cur*60);
+  const curPace=fmtPace((predDist/(cur*60)));
+  const oneMonthAgo=preds[preds.length-5]||preds[0];
+  const diff=((cur-oneMonthAgo)*60);
+  const diffStr=(diff<=0?'+':'')+fmtRaceTime(Math.abs(diff));
+  const diffCol=diff<=0?'var(--ce)':(Math.abs(diff)<30?'#FFC000':'var(--cr)');
+  const goal={21097:'1:27:00',5000:'19:00',10000:'39:30',42195:'3:05:00'}[predDist];
+  const goalS=goal?goal.split(':').reduce((a,t,i)=>a+(i===0?parseInt(t)*3600:i===1?parseInt(t)*60:parseInt(t)),0):null;
+  const toGoal=goalS?((cur*60-goalS)/60):null;
+  const toGoalStr=toGoal!==null?fmtRaceTime(Math.abs(toGoal)*60):null;
+  document.getElementById('pred-main-content').innerHTML=`
+    <div class="pred-time">${curStr}</div>
+    <div class="pred-pace">${curPace}/km</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <span class="pred-delta" style="background:${diffCol}18;color:${diffCol}">
+        ${diff<=0?'▲ ':'▼ '}${diffStr} vs 1 month ago
+      </span>
+      ${toGoalStr?`<span class="pred-delta" style="background:var(--bg3);color:var(--t2)">
+        ${toGoal>0?'−':'✓ '}${toGoalStr} to goal</span>`:''}
+    </div>`;
+  const ctx=document.getElementById('pred-cv');
+  if(!ctx)return;
+  predChart=new Chart(ctx,{type:'line',
+    data:{labels,datasets:[
+      {data:preds,borderColor:'#3D90F5',backgroundColor:'#3D90F528',
+        borderWidth:2,pointRadius:0,tension:0.4,fill:true},
+      ...(goalS?[{data:preds.map(()=>goalS/60),borderColor:'#FF5500',
+        borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false}]:[])
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:c=>c.datasetIndex===0?fmtRaceTime(c.parsed.y*60):'Goal: '+goal
+      },backgroundColor:'#1E1F2E',titleColor:'#F2EDE8',bodyColor:'#6B6F8F'}},
+      scales:{x:{grid:{display:false},ticks:{color:'#3E4258',font:{size:9},maxTicksLimit:5,maxRotation:0}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#3E4258',font:{size:9},
+          callback:v=>fmtRaceTime(v*60)},reverse:true}}}
+  });
+}
+
 function renderStats(){
   const cw=getCurWeek();
   const done=sessions.filter(s=>new Date(s[1])<TODAY);
   const doneKm=Math.round(done.reduce((a,s)=>a+s[8],0));
   const total=Math.round(sessions.reduce((a,s)=>a+s[8],0));
   const pct=Math.round(doneKm/total*100);
-
-  // ── FITNESS METRICS (editable, stored in localStorage) ──
-  const DEFAULT_FM = {
-    vo2:{label:'VO₂ Max',val:55.7,unit:'',history:[58.2,57.8,56.1,53.4,54.2,55.1,55.7],goodDir:'up',color:'#FF5500'},
-    rhr:{label:'Rest HR',val:40,unit:'bpm',history:[43,42,41,42,43,41,40],goodDir:'down',color:'#3D90F5'},
-    hrv:{label:'HRV',val:102,unit:'ms',history:[98,104,101,99,93,100,102],goodDir:'up',color:'#2ED39A'},
-    cad:{label:'Cadence',val:87,unit:'spm',history:[83,85,86,87,87,87,87],goodDir:'up',color:'#9D6FFF'}
-  };
-  const fm = JSON.parse(localStorage.getItem('fitness_metrics')||'null') || DEFAULT_FM;
 
   function sparkline(data,color,w,h){
     w=w||56;h=h||22;
@@ -700,46 +898,34 @@ function renderStats(){
     </svg>`;
   }
 
-  function trendIcon(hist,goodDir){
-    const diff=hist[hist.length-1]-hist[hist.length-2];
-    if(Math.abs(diff)<0.3)return {icon:'→',color:'#6B6F8F'};
-    const up=diff>0;
-    const good=(up&&goodDir==='up')||(!up&&goodDir==='down');
-    return {icon:up?'↑':'↓',color:good?'#2ED39A':'#FF3D6B'};
-  }
-
-  function editMetric(key){
-    const m=fm[key];
-    const v=prompt(`Update ${m.label}:`,m.val);
-    if(v===null)return;
-    const n=parseFloat(v);
-    if(isNaN(n))return;
-    fm[key]={...m,val:n,history:[...m.history.slice(1),n]};
-    localStorage.setItem('fitness_metrics',JSON.stringify(fm));
-    renderStats();
-  }
-  window._editMetric=editMetric;
-
-  const fitCards=Object.entries(fm).map(([key,m])=>{
-    const tr=trendIcon(m.history,m.goodDir);
-    const delta=(m.val-m.history[0]);
-    const sign=delta>0?'+':'';
-    return `<div class="fit-card" onclick="_editMetric('${key}')">
-      <div class="fc-lbl">${m.label}</div>
+  const fitCards=Object.entries(MDATA).map(([key,m])=>{
+    const hist=m.vals;
+    const cur=hist[hist.length-1];
+    const prev=hist[hist.length-2];
+    const diff=cur-prev;
+    const goodUp=m.goodDir==='up';
+    const isGood=(diff>=0&&goodUp)||(diff<0&&!goodUp);
+    const trendCol=Math.abs(diff)<0.3?'var(--t2)':isGood?'var(--ce)':'var(--cr)';
+    const trendIcon=Math.abs(diff)<0.3?'→':diff>0?'↑':'↓';
+    const delta=cur-hist[0];
+    const sign=delta>=0?'+':'';
+    return `<div class="fit-card" onclick="openMetricDrill('${key}')">
+      <div class="fc-lbl">${m.label} <span style="color:var(--t3);font-weight:400;font-size:9px">${m.source}</span></div>
       <div class="fc-row">
         <div style="display:flex;align-items:flex-end;gap:2px">
-          <span class="fc-val" style="color:${m.color}">${m.val}</span>
+          <span class="fc-val" style="color:${m.color}">${cur}</span>
           <span class="fc-unit">${m.unit}</span>
         </div>
-        <span class="fc-trend" style="color:${tr.color}">${tr.icon}</span>
+        <span class="fc-trend" style="color:${trendCol}">${trendIcon}</span>
       </div>
-      <div class="fc-spark">${sparkline(m.history,m.color)}</div>
-      <div class="fc-delta" style="color:${tr.color}">${sign}${delta.toFixed(1)} since Jan</div>
+      <div class="fc-spark">${sparkline(hist.slice(-7),m.color)}</div>
+      <div class="fc-delta" style="color:${trendCol}">${sign}${delta.toFixed(1)} since Jan</div>
     </div>`;
   }).join('');
 
   // ── READINESS SCORE ──
-  const hrv=fm.hrv.val, rhr=fm.rhr.val, vo2=fm.vo2.val;
+  const mvo2=MDATA.vo2.vals,mhrv=MDATA.hrv.vals,mrhr=MDATA.rhr.vals;
+  const hrv=mhrv[mhrv.length-1],rhr=mrhr[mrhr.length-1],vo2=mvo2[mvo2.length-1];
   let score=70;
   if(hrv>=100)score+=12;else if(hrv>=90)score+=6;else score-=6;
   if(rhr<=41)score+=8;else if(rhr<=45)score+=3;else score-=4;
@@ -829,6 +1015,21 @@ function renderStats(){
         <div class="rr-factors">${factorStr}</div>
       </div>
     </div>
+
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Performance predictions
+      <span style="font-weight:400;font-size:10px;color:var(--t3);margin-left:6px">VO₂ max based</span>
+    </div></div>
+    <div class="pred-block">
+      <div class="pred-tabs">
+        <button class="pred-tab" onclick="switchPredDist(5000,this)">5K</button>
+        <button class="pred-tab" onclick="switchPredDist(10000,this)">10K</button>
+        <button class="pred-tab on" onclick="switchPredDist(21097,this)">Half</button>
+        <button class="pred-tab" onclick="switchPredDist(42195,this)">Marathon</button>
+      </div>
+      <div class="pred-main" id="pred-main-content"></div>
+      <div class="pred-chart-wrap"><canvas id="pred-cv" role="img" aria-label="Prediction trend">Prediction</canvas></div>
+      <div class="pred-note">Based on VO₂ max history · Orange dashed = goal time · Tap a distance tab to switch</div>
+    </div>
     <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Training block</div></div>
     <div style="display:flex;justify-content:center;padding:0 0 8px">${arcSVG}</div>
     <div class="stats-grid" style="padding-top:0">
@@ -861,6 +1062,7 @@ function renderStats(){
   const phC={1:'#FF5500',t:'#9D6FFF',2:'#3D90F5',3:'#FF3D6B'};
   const wks=[];
   for(let w=1;w<=24;w++){const ss=sessions.filter(s=>s[2]===w);wks.push({w,km:Math.round(ss.reduce((a,s)=>a+s[8],0)),ph:ss[0]?.[3]||1});}
+  renderPredChart();
   if(volChart)volChart.destroy();
   volChart=new Chart(document.getElementById('vc'),{
     type:'bar',
@@ -1177,7 +1379,7 @@ function renderAll(){
 }
 
 // ── NAV ──
-document.querySelectorAll('.nb').forEach(btn=>{
+document.querySelectorAll('#nav-row .nb').forEach(btn=>{
   btn.addEventListener('click',()=>{
     const t=btn.dataset.t;
     document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
