@@ -12,6 +12,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="apple-touch-icon-precomposed" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 :root{
@@ -296,6 +298,62 @@ opacity:0;will-change:transform;border-radius:var(--r2)}
   font-family:monospace;padding:3px 8px;border-radius:6px;margin-top:6px}
 .pred-chart-wrap{position:relative;height:130px;padding:12px 16px 16px}
 .pred-note{font-size:10px;color:var(--t3);padding:0 16px 14px;line-height:1.5}
+
+/* RUN DETAIL */
+.run-tabs{display:flex;border-bottom:0.5px solid var(--bdr);margin-bottom:16px}
+.run-tab{flex:1;padding:10px 4px;background:none;border:none;
+  border-bottom:2px solid transparent;margin-bottom:-0.5px;
+  color:var(--t2);font-size:13px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:color .12s,border-color .12s}
+.run-tab.on{color:var(--t1);border-bottom-color:var(--orange)}
+.run-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.rs-box{background:var(--bg3);border-radius:10px;padding:11px 10px;text-align:center}
+.rs-val{font-size:20px;font-weight:800;font-family:'SF Mono',monospace;letter-spacing:-.5px;line-height:1}
+.rs-lbl{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+#run-map{height:220px;border-radius:14px;overflow:hidden;background:var(--bg3)}
+.splits-table{width:100%;border-collapse:collapse}
+.splits-table th{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;
+  letter-spacing:.06em;padding:6px 4px;text-align:left;border-bottom:0.5px solid var(--bdr)}
+.splits-table td{padding:8px 4px;font-size:13px;border-bottom:0.5px solid var(--bdr)}
+.split-pace-bar{height:3px;border-radius:2px;margin-top:4px}
+.planned-comparison{background:var(--bg3);border-radius:10px;padding:12px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between}
+/* PBs */
+.pb-row{display:flex;gap:10px;overflow-x:auto;padding:0 16px 16px;scrollbar-width:none}
+.pb-row::-webkit-scrollbar{display:none}
+.pb-card{flex-shrink:0;background:var(--bg1);border-radius:var(--r);
+  padding:14px 16px;border:0.5px solid var(--bdr);min-width:120px}
+.pb-dist{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:6px}
+.pb-time{font-size:22px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-1px;line-height:1;color:var(--t1)}
+.pb-sub{font-size:10px;color:var(--t3);margin-top:4px;line-height:1.4}
+.pb-2026{color:var(--orange)}
+/* COACHING */
+.coaching-block{margin:0 16px 16px;background:var(--bg1);border:0.5px solid var(--bdr);border-radius:var(--r2);padding:16px}
+.coaching-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.coaching-title{font-size:11px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:.07em}
+.coaching-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;
+  background:var(--bg3);color:var(--t2)}
+.coaching-text{font-size:14px;color:var(--t1);line-height:1.65;margin-bottom:14px}
+.coaching-focus{background:var(--bg3);border-radius:10px;padding:12px;
+  border-left:3px solid var(--orange)}
+.coaching-focus-lbl{font-size:10px;font-weight:700;color:var(--orange);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.coaching-focus-text{font-size:14px;font-weight:600;color:var(--t1);line-height:1.4}
+/* TRAINING DATA CARDS */
+.tdata-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px 16px}
+.tdata-card{background:var(--bg1);border-radius:var(--r);padding:14px;
+  border:0.5px solid var(--bdr);cursor:pointer;transition:opacity .1s}
+.tdata-card:active{opacity:.75}
+.td-lbl{font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:8px}
+.td-val{font-size:28px;font-weight:800;font-family:'SF Mono',monospace;
+  letter-spacing:-1px;line-height:1;color:var(--t1)}
+.td-unit{font-size:12px;color:var(--t2);font-weight:400;margin-left:2px}
+.td-sub{font-size:11px;color:var(--t3);margin-top:4px}
+.td-bar{height:3px;border-radius:2px;background:var(--bg3);overflow:hidden;margin-top:8px}
+.td-fill{height:100%;border-radius:2px;background:var(--orange)}
 </style>
 </head>
 <body>
@@ -706,6 +764,227 @@ function changeWeek(d){
 
 // ── STATS TAB ──
 
+
+// ── POLYLINE DECODER ──
+function decodePolyline(enc){
+  let i=0,lat=0,lng=0;const c=[];
+  while(i<enc.length){
+    let b,s=0,r=0;do{b=enc.charCodeAt(i++)-63;r|=(b&31)<<s;s+=5;}while(b>=32);
+    lat+=(r&1)?~(r>>1):(r>>1);s=0;r=0;
+    do{b=enc.charCodeAt(i++)-63;r|=(b&31)<<s;s+=5;}while(b>=32);
+    lng+=(r&1)?~(r>>1):(r>>1);
+    c.push([lat/1e5,lng/1e5]);
+  }return c;
+}
+
+let leafletMap=null;
+let detailChart2=null;
+let currentRunSession=null;
+let currentRunTab='overview';
+
+async function fetchFullActivity(id){
+  const k='full_act_'+id;
+  const cached=localStorage.getItem(k);
+  if(cached)return JSON.parse(cached);
+  const token=await ensureToken();
+  if(!token)return null;
+  try{
+    const r=await fetch('https://www.strava.com/api/v3/activities/'+id,{headers:{Authorization:'Bearer '+token}});
+    const d=await r.json();
+    if(d.id){localStorage.setItem(k,JSON.stringify(d));}
+    return d;
+  }catch(e){return null;}
+}
+
+function openRunDetail(session, act){
+  currentRunSession=session;
+  currentRunTab='overview';
+  renderRunSheet(session,act,null,'overview');
+  document.getElementById('sheet').classList.add('open');
+  document.getElementById('sheet-bg').classList.add('vis');
+  fetchFullActivity(act.id).then(full=>{
+    if(full&&document.getElementById('sheet').classList.contains('open')){
+      renderRunSheet(session,act,full,currentRunTab);
+    }
+  });
+}
+window.openRunDetail=openRunDetail;
+
+function switchRunTab(tab,session,act,full){
+  currentRunTab=tab;
+  document.querySelectorAll('.run-tab').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+  renderRunContent(tab,session,act,full);
+}
+window.switchRunTab=switchRunTab;
+
+function renderRunSheet(session,act,full,tab){
+  const[id,date,wk,ph,ty,sn,fn2,planMin,planKm]=session;
+  const col=TC[ty].c;
+  const actualDist=(act.distance/1000).toFixed(2);
+  const actualTime=act.moving_time;
+  const h=Math.floor(actualTime/3600),m=Math.floor((actualTime%3600)/60),s=actualTime%60;
+  const timeStr=h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+  document.getElementById('sheet-body').innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:14px">
+      <div style="width:3px;min-height:36px;border-radius:2px;background:${col};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:${col};text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px">${TC[ty].l}</div>
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.4px;line-height:1.2;margin-bottom:3px">${act.name||fn2}</div>
+        <div style="font-size:11px;font-family:monospace;color:var(--t2)">${fmtDate(date)} · ${actualDist}km · ${timeStr}</div>
+      </div>
+    </div>
+    <div class="run-tabs">
+      <button class="run-tab${tab==='overview'?' on':''}" data-t="overview" onclick="switchRunTab('overview',currentRunSession,_curAct,_curFull)">Overview</button>
+      <button class="run-tab${tab==='splits'?' on':''}" data-t="splits" onclick="switchRunTab('splits',currentRunSession,_curAct,_curFull)">Splits</button>
+      <button class="run-tab${tab==='map'?' on':''}" data-t="map" onclick="switchRunTab('map',currentRunSession,_curAct,_curFull)">Map</button>
+    </div>
+    <div id="run-tab-content"></div>`;
+  window._curAct=act;window._curFull=full;
+  renderRunContent(tab,session,act,full);
+}
+
+function renderRunContent(tab,session,act,full){
+  const content=document.getElementById('run-tab-content');
+  if(!content)return;
+  const[id,date,wk,ph,ty,sn,fn2,planMin,planKm]=session;
+  if(leafletMap){leafletMap.remove();leafletMap=null;}
+  if(detailChart2){detailChart2.destroy();detailChart2=null;}
+
+  if(tab==='overview'){
+    const pace=fmtPace(act.distance/act.moving_time);
+    const hr=act.average_heartrate?Math.round(act.average_heartrate)+'bpm':'—';
+    const cad=act.average_cadence?Math.round(act.average_cadence*2)+'spm':'—';
+    const elev=act.total_elevation_gain?'+'+Math.round(act.total_elevation_gain)+'m':'—';
+    const dist=(act.distance/1000).toFixed(2)+'km';
+    const actualMin=Math.round(act.moving_time/60);
+    const planedPace=(planMin/planKm).toFixed(1);
+    const paceDiff=((act.moving_time/60/planKm)-(planMin/planKm));
+    const paceCol=Math.abs(paceDiff)<0.5?'var(--ce)':paceDiff<0?'var(--ce)':'var(--cr)';
+    const distDiff=((act.distance/1000)-planKm);
+    const distCol=Math.abs(distDiff)<0.3?'var(--ce)':'var(--t2)';
+    content.innerHTML=`
+      <div class="run-stats-grid">
+        <div class="rs-box"><div class="rs-val">${dist}</div><div class="rs-lbl">Distance</div></div>
+        <div class="rs-box"><div class="rs-val">${pace}</div><div class="rs-lbl">Avg Pace</div></div>
+        <div class="rs-box"><div class="rs-val">${hr}</div><div class="rs-lbl">Avg HR</div></div>
+        <div class="rs-box"><div class="rs-val">${actualMin}m</div><div class="rs-lbl">Duration</div></div>
+        <div class="rs-box"><div class="rs-val">${cad}</div><div class="rs-lbl">Cadence</div></div>
+        <div class="rs-box"><div class="rs-val">${elev}</div><div class="rs-lbl">Elevation</div></div>
+      </div>
+      <div class="planned-comparison">
+        <div><div style="font-size:10px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">vs Plan</div>
+          <div style="font-size:13px;color:var(--t2)">Planned: ${planKm}km · ~${planMin}min</div></div>
+        <div style="text-align:right">
+          <div style="color:${paceCol};font-family:monospace;font-size:14px;font-weight:700">${paceDiff>=0?'+':''}${paceDiff.toFixed(1)} min/km</div>
+          <div style="color:${distCol};font-family:monospace;font-size:12px">${distDiff>=0?'+':''}${distDiff.toFixed(2)}km</div>
+        </div>
+      </div>
+      ${act.suffer_score?`<div style="background:var(--bg3);border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:var(--t2)">Relative effort</span>
+        <span style="font-size:18px;font-weight:800;font-family:monospace;color:var(--orange)">${act.suffer_score}</span>
+      </div>`:''}`;
+  }
+  else if(tab==='splits'){
+    const splits=(full?.splits_metric)||[];
+    if(!splits.length){
+      content.innerHTML=`<div style="text-align:center;color:var(--t2);padding:40px 0;font-size:13px">${full===null?'Loading splits…':'No split data available'}</div>`;
+      return;
+    }
+    const paces=splits.map(s=>s.moving_time/(s.distance/1000));
+    const avgPace=paces.reduce((a,p)=>a+p,0)/paces.length;
+    const minP=Math.min(...paces),maxP=Math.max(...paces),rangeP=maxP-minP||1;
+    const rows=splits.map((s,i)=>{
+      const p=s.moving_time/(s.distance/1000);
+      const pStr=`${Math.floor(p/60)}:${String(Math.round(p%60)).padStart(2,'0')}`;
+      const hr=s.average_heartrate?Math.round(s.average_heartrate)+'':'-';
+      const norm=(p-minP)/rangeP;
+      const barCol=norm<0.3?'#2ED39A':norm<0.6?'#FFC000':'#FF3D6B';
+      const barW=Math.round((1-(p-minP)/rangeP)*100);
+      return `<tr><td style="font-family:monospace;color:var(--t2)">${i+1}</td>
+        <td><div style="font-weight:700;font-family:monospace">${pStr}/km</div>
+          <div class="split-pace-bar" style="width:${barW}%;background:${barCol}"></div></td>
+        <td style="font-family:monospace;color:var(--t2)">${hr}bpm</td>
+        <td style="font-family:monospace;color:${s.elevation_difference>3?'#FF3D6B':s.elevation_difference<-3?'#2ED39A':'var(--t2)'}">${s.elevation_difference>0?'+':''}${Math.round(s.elevation_difference)}m</td>
+      </tr>`;
+    }).join('');
+    content.innerHTML=`<table class="splits-table">
+      <thead><tr><th>KM</th><th>Pace</th><th>HR</th><th>Elev</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+  else if(tab==='map'){
+    const poly=act.map?.summary_polyline;
+    if(!poly){content.innerHTML=`<div style="text-align:center;color:var(--t2);padding:40px 0;font-size:13px">No map data</div>`;return;}
+    content.innerHTML=`<div id="run-map"></div>`;
+    setTimeout(()=>{
+      const coords=decodePolyline(poly);
+      if(!coords.length||!window.L)return;
+      leafletMap=L.map('run-map',{zoomControl:false,attributionControl:false});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(leafletMap);
+      const line=L.polyline(coords,{color:'#FF5500',weight:4,opacity:.9}).addTo(leafletMap);
+      leafletMap.fitBounds(line.getBounds(),{padding:[20,20]});
+      L.circleMarker(coords[0],{radius:7,fillColor:'#2ED39A',color:'#fff',fillOpacity:1,weight:2.5}).addTo(leafletMap);
+      L.circleMarker(coords[coords.length-1],{radius:7,fillColor:'#FF3D6B',color:'#fff',fillOpacity:1,weight:2.5}).addTo(leafletMap);
+      setTimeout(()=>leafletMap&&leafletMap.invalidateSize(),350);
+    },200);
+  }
+}
+
+// ── COACHING INSIGHT ──
+function generateCoachingInsight(){
+  const cw=getCurWeek();
+  const vo2=MDATA.vo2.vals,hrv=MDATA.hrv.vals;
+  const curVo2=vo2[vo2.length-1],curHrv=hrv[hrv.length-1];
+  const vo2Trend=(curVo2-vo2[vo2.length-4]).toFixed(1);
+  const trendStr=vo2Trend>0?'+'+vo2Trend:vo2Trend;
+  let insight='',focus='';
+  if(curHrv<93){
+    return{insight:`Your HRV at ${curHrv}ms is below your baseline, flagging accumulated stress. This isn't a failure — it's the system working. Consider converting today's quality session to easy running and prioritising sleep above all else. The training block has volume ahead that matters more than any single hard session.`,focus:'Swap quality for easy running until HRV returns above 95ms'};
+  }
+  if(cw<=3){
+    insight=`Week ${cw} is about establishing the threshold stimulus, not chasing pace. The 3×10min format feels conservative because it's meant to — this early in a post-ablation block, the warmup quality matters as much as the intervals. Your VO₂ max has moved ${trendStr} points over 3 weeks, confirming the aerobic system is responding well to controlled loading.`;
+    focus='Complete the full 15-minute warmup before any threshold effort';
+  }else if(cw<=6){
+    insight=`You're in the heart of Phase 1 threshold work. At VO₂ ${curVo2}, your aerobic engine is rebuilding ahead of the 6-week projection. The progression to longer reps requires patience on pace — the prescribed range exists for a reason at this stage of cardiac recovery. Avoid the temptation to push off the HR ceiling.`;
+    focus='Execute pace from the slower bound first, only tighten if HR stays below 168';
+  }else if(cw<=10){
+    insight=`Entering continuous tempo territory, which is the highest-quality stimulus in Phase 1. At 25-30 minutes, this should feel 'comfortably hard' — controlled breathing, some discomfort, but not racing effort. Your HRV at ${curHrv}ms indicates strong recovery capacity. The VO₂ trend (${trendStr} over 3 weeks) supports pushing toward the upper bound of prescribed paces.`;
+    focus='Run the last 5 minutes of tempo at the faster pace bound if HR permits';
+  }else if(cw<=13){
+    insight=`Tune-up block: the calibration race is your most valuable data point of the whole plan. Resist the urge to race it — treat the first 5km as warmup and settle into 4:20-4:25/km. The result tells us whether Phase 2 paces need adjusting. A conservative execution that gives clean data is worth more than a blowup that distorts the picture.`;
+    focus='First 5km of tune-up race at 4:20-4:25/km regardless of how good you feel';
+  }else if(cw<=17){
+    insight=`Phase 2 introduces the defining stimulus of HM preparation: running at goal pace on tired legs. The long run finish segments are more important than the quality sessions right now — they're training the specific neuromuscular pattern for race day. Your current fitness trajectory puts the 1:27 goal within reach if the next 8 weeks are consistent.`;
+    focus='Rate effort in the last 2km of long run finish segments, not GPS pace';
+  }else if(cw<=20){
+    insight=`You're approaching peak phase. The combination of high-volume tempo work and long runs with race-pace finishes is demanding. Watch the HRV closely this week — a sustained drop below ${Math.round(curHrv*0.92)}ms would warrant a cutback before the final sharpening block. The fitness is banked; protect it.`;
+    focus='HRV-gate the W${cw} quality session — skip if below ${Math.round(curHrv*0.92)}ms on the day';
+  }else{
+    insight=`Final sharpening phase. The taper anxiety you may feel is physiologically normal — your legs feel fresh but sluggish, and the temptation to add km is real. Resist. The fitness was built in weeks 1-20; these final weeks are about allowing it to express itself on race day. Keep every easy run genuinely easy.`;
+    focus='Trust the taper — do not add km or intensity to feel more prepared';
+  }
+  return{insight,focus};
+}
+
+// ── TRAINING DATA COMPUTATIONS ──
+function computeTrainingData(){
+  const cw=getCurWeek();
+  const wkKms=[];for(let w=1;w<=cw;w++){wkKms.push(sessions.filter(s=>s[2]===w).reduce((a,s)=>a+s[8],0));}
+  const thisWk=Math.round(wkKms[wkKms.length-1]||0);
+  const last4avg=wkKms.length>=4?Math.round(wkKms.slice(-4).reduce((a,v)=>a+v,0)/4):thisWk;
+  const loadDiff=thisWk-last4avg;
+  const doneQ=sessions.filter(s=>s[4]==='q'&&new Date(s[1])<TODAY).length;
+  const doneE=sessions.filter(s=>s[4]==='e'&&new Date(s[1])<TODAY).length;
+  const doneL=sessions.filter(s=>s[4]==='l'&&new Date(s[1])<TODAY).length;
+  const doneAll=doneQ+doneE+doneL;
+  const easyPct=doneAll?Math.round(doneE/doneAll*100):0;
+  let streak=0;
+  for(let w=cw;w>=1;w--){const s=sessions.filter(x=>x[2]===w&&new Date(x[1])<TODAY);if(s.length>=2)streak++;else break;}
+  const longRuns=sessions.filter(s=>s[4]==='l'&&new Date(s[1])<TODAY);
+  const bestLong=longRuns.length?Math.max(...longRuns.map(s=>s[8])):0;
+  return{thisWk,last4avg,loadDiff,easyPct,streak,bestLong};
+}
+
 // ── METRIC HISTORY (pre-populated from training data) ──
 const MW=['2026-01-05','2026-01-12','2026-01-19','2026-01-26',
   '2026-02-02','2026-02-09','2026-02-16','2026-02-23',
@@ -987,18 +1266,7 @@ function renderStats(){
     </div>`;
   }).join('');
 
-  // ── STRAVA ROWS ──
-  const stravaRows=stravaActs.length?`
-    <div style="padding-bottom:8px"><div class="section-head" style="padding:0 20px">Recent Strava runs</div></div>
-    ${stravaActs.slice(0,6).map(a=>{
-      const pace=fmtPace(a.distance/a.moving_time);
-      const d=new Date(a.start_date_local).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-      return `<div class="up-card" style="margin:0 16px 6px">
-        <div class="up-dot" style="background:var(--cl)"></div>
-        <div class="up-info"><div class="up-name">${a.name}</div><div class="up-date">${d}</div></div>
-        <div class="up-meta">${pace}/km · ${fmtDist(a.distance)}</div>
-      </div>`;
-    }).join('')}`:'';
+  const stravaRows='';
 
   document.getElementById('tab-stats').innerHTML=`
     <div style="padding:16px 0 4px">
@@ -1058,6 +1326,80 @@ function renderStats(){
     <div class="race-chips">${raceChips}</div>
     ${stravaRows}
     <div style="height:8px"></div>`;
+
+  // ── TRAINING DATA CARDS ──
+  const td=computeTrainingData();
+  const loadCol=td.loadDiff>5?'var(--cr)':td.loadDiff<-5?'var(--ce)':'var(--orange)';
+  document.getElementById('tab-stats').insertAdjacentHTML('beforeend',`
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Training overview</div></div>
+    <div class="tdata-grid">
+      <div class="tdata-card">
+        <div class="td-lbl">Weekly Load</div>
+        <div><span class="td-val">${td.thisWk}</span><span class="td-unit">km</span></div>
+        <div class="td-sub" style="color:${loadCol}">${td.loadDiff>=0?'+':''}${td.loadDiff}km vs 4wk avg</div>
+        <div class="td-bar"><div class="td-fill" style="width:${Math.min(100,td.thisWk/50*100)}%"></div></div>
+      </div>
+      <div class="tdata-card">
+        <div class="td-lbl">Easy:Hard</div>
+        <div><span class="td-val">${td.easyPct}</span><span class="td-unit">% easy</span></div>
+        <div class="td-sub">Target: ≥78% easy</div>
+        <div class="td-bar"><div class="td-fill" style="width:${td.easyPct}%;background:${td.easyPct>=75?'var(--ce)':'var(--cr)'}"></div></div>
+      </div>
+      <div class="tdata-card">
+        <div class="td-lbl">Week Streak</div>
+        <div><span class="td-val">${td.streak}</span><span class="td-unit">wks</span></div>
+        <div class="td-sub">consecutive training</div>
+      </div>
+      <div class="tdata-card">
+        <div class="td-lbl">Best Long Run</div>
+        <div><span class="td-val">${td.bestLong}</span><span class="td-unit">km</span></div>
+        <div class="td-sub">this block</div>
+      </div>
+    </div>
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Personal bests</div></div>
+    <div class="pb-row">
+      <div class="pb-card">
+        <div class="pb-dist">5K</div>
+        <div class="pb-time">19:13</div>
+        <div class="pb-sub">Career best<br>derived from HM PB</div>
+      </div>
+      <div class="pb-card">
+        <div class="pb-dist">10K</div>
+        <div class="pb-time">40:26</div>
+        <div class="pb-sub">Career best<br>derived from HM PB</div>
+      </div>
+      <div class="pb-card" style="border-color:rgba(255,85,0,.3)">
+        <div class="pb-dist" style="color:var(--orange)">Half</div>
+        <div class="pb-time pb-2026">1:29:54</div>
+        <div class="pb-sub">Career best<br>pre-diagnosis</div>
+      </div>
+      <div class="pb-card" style="border-color:rgba(255,85,0,.3)">
+        <div class="pb-dist" style="color:var(--orange)">Marathon</div>
+        <div class="pb-time pb-2026">3:17:00</div>
+        <div class="pb-sub">Career best<br>pre-diagnosis</div>
+      </div>
+      <div class="pb-card">
+        <div class="pb-dist">2026 HM target</div>
+        <div class="pb-time" style="color:var(--ce)">1:27:00</div>
+        <div class="pb-sub">Goal race<br>22 Nov 2026</div>
+      </div>
+    </div>
+    <div style="padding:4px 0 4px"><div class="section-head" style="padding:0 20px 8px">Coaching insight</div></div>
+    <div class="coaching-block" id="coaching-block-content"></div>
+    <div style="height:8px"></div>`);
+
+  // Render coaching insight
+  const ci=generateCoachingInsight();
+  document.getElementById('coaching-block-content').innerHTML=`
+    <div class="coaching-hd">
+      <span class="coaching-title"><i class="ti ti-brain" style="font-size:13px;vertical-align:-1px;margin-right:5px"></i>This week's insight</span>
+      <span class="coaching-badge">W${getCurWeek()} · ${(PC[sessions.find(s=>s[2]===getCurWeek())?.[3]]||PC[1]).l}</span>
+    </div>
+    <div class="coaching-text">${ci.insight}</div>
+    <div class="coaching-focus">
+      <div class="coaching-focus-lbl"><i class="ti ti-target" style="font-size:11px;vertical-align:-1px;margin-right:4px"></i>Focus this week</div>
+      <div class="coaching-focus-text">${ci.focus}</div>
+    </div>`;
 
   const phC={1:'#FF5500',t:'#9D6FFF',2:'#3D90F5',3:'#FF3D6B'};
   const wks=[];
@@ -1217,6 +1559,9 @@ function disconnectStrava(){
 function openSheet(id){
   const s=sessions.find(x=>x[0]===id);
   if(!s)return;
+  // If past session with Strava match, open run detail
+  const stravaMatch=findStrava(s[1]);
+  if(stravaMatch&&new Date(s[1])<=TODAY){openRunDetail(s,stravaMatch);return;}
   const[,date,,ph,ty,sn,fn2,em,km,gfn,gargs]=s;
   const col=TC[ty].c;
   const pc=PC[ph]||PC[1];
@@ -1275,6 +1620,8 @@ function openSheet(id){
 }
 
 function closeSheet(){
+  if(leafletMap){leafletMap.remove();leafletMap=null;}
+  if(detailChart2){detailChart2.destroy();detailChart2=null;}
   document.getElementById('sheet').classList.remove('open');
   document.getElementById('sheet-bg').classList.remove('vis');
 }
