@@ -1742,8 +1742,29 @@ document.querySelectorAll('#nav-row .nb').forEach(btn=>{
 
 document.getElementById('sheet-bg').addEventListener('click',closeSheet);
 
-if('serviceWorker' in navigator)
-  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+// ── VERSION-BASED CACHE BUSTER ──
+// Change this string any time you push a new index.html
+const APP_VERSION = 'v3';
+(async () => {
+  const stored = localStorage.getItem('app_version');
+  if (stored !== APP_VERSION) {
+    // New version detected — wipe old SW caches and re-register
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    localStorage.setItem('app_version', APP_VERSION);
+    // Reload clean (only happens once per version)
+    if (stored !== null) { window.location.reload(true); return; }
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+})();
 
 // ── BOOT ──
 (async()=>{
